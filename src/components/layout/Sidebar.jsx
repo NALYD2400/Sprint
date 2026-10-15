@@ -142,7 +142,7 @@ export default function Sidebar({
         <button
           type="button"
           onClick={onToggleCollapsed}
-          className={`w-full flex items-center h-9 rounded-lg text-xs text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors cursor-pointer ${
+          className={`w-full flex items-center h-10 rounded-lg text-xs text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors cursor-pointer ${
             collapsed ? 'justify-center' : 'gap-3 px-3'
           }`}
           title={collapsed ? 'Agrandir le menu (Ctrl+B)' : 'Réduire le menu (Ctrl+B)'}
@@ -150,9 +150,9 @@ export default function Sidebar({
           aria-expanded={!collapsed}
         >
           {collapsed ? (
-            <PanelLeftOpen className="w-4 h-4" />
+            <PanelLeftOpen className="w-[18px] h-[18px] shrink-0" />
           ) : (
-            <PanelLeftClose className="w-4 h-4" />
+            <PanelLeftClose className="w-[18px] h-[18px] shrink-0" />
           )}
           {!collapsed && <span>Réduire le menu</span>}
         </button>
