@@ -411,7 +411,7 @@ export default function ProjectsView({
                   </button>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {servers.length > 0 && (
+                    {isCollapsed && servers.length > 0 && (
                       <IconBtn
                         title="Ouvrir le terminal du projet"
                         onClick={() => {
@@ -422,7 +422,7 @@ export default function ProjectsView({
                         <Terminal className="w-3.5 h-3.5" />
                       </IconBtn>
                     )}
-                    {servers.length === 1 && (
+                    {isCollapsed && servers.length === 1 && (
                       <ProjectLaunchButton project={project} server={servers[0]} getOperation={getOperation} />
                     )}
                     {servers.length > 1 &&
