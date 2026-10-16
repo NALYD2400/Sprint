@@ -134,22 +134,6 @@ main#main-content {
   flex-shrink: 0;
   color: var(--text-lo);
 }
-.context-menu-item:hover .context-menu-icon,
-.context-menu-item:focus-visible .context-menu-icon {
-  color: var(--accent-readable);
-}
-/* Action destructive : même gabarit que les autres entrées, teinte rose du thème */
-.context-menu-item.is-danger {
-  color: var(--color-rose-300);
-}
-.context-menu-item.is-danger .context-menu-icon {
-  color: currentColor;
-}
-.context-menu-item.is-danger:hover,
-.context-menu-item.is-danger:focus-visible {
-  color: var(--color-rose-300);
-  background: color-mix(in srgb, var(--color-rose-400) 12%, transparent);
-}
 .context-menu-shortcut {
   color: var(--text-lo);
   font: 10px var(--font-mono);
