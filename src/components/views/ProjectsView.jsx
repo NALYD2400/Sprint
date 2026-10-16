@@ -15,39 +15,69 @@ import {
   Search,
   Monitor,
   MoreHorizontal,
+  Play,
+  Square,
   Copy,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { triggerToast } from '../../services/toastBus';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import ServerControls from '../ui/ServerControls';
 import useServerOperations from '../../hooks/useServerOperations';
-import { startProject, stopProject, openUrl, projectUrl } from '../../services/serverActions';
+import {
+  startProject,
+  stopProject,
+  openUrl,
+  projectUrl,
+  performServerAction,
+} from '../../services/serverActions';
 
+/** Entrée du menu « ... » : même gabarit que ContextMenu (classes globales du thème). */
 function MenuItem({ icon: Icon, danger, onClick, children }) {
   return (
     <button
       onClick={onClick}
       role="menuitem"
-      className={`w-full flex items-center gap-2.5 px-2.5 min-h-8 py-1.5 rounded-md transition-colors cursor-pointer text-left ${
-        danger ? 'text-rose-400 hover:bg-rose-500/10' : 'text-zinc-300 hover:text-white hover:bg-white/[0.06]'
-      }`}
+      className={`context-menu-item${danger ? ' is-danger' : ''}`}
     >
-      <Icon className="w-3.5 h-3.5 opacity-70" />
-      <span>{children}</span>
+      <span className="flex items-center gap-2.5 min-w-0">
+        <Icon size={15} strokeWidth={1.75} className="context-menu-icon" />
+        <span>{children}</span>
+      </span>
     </button>
   );
 }
 
 function IconBtn({ title, onClick, children }) {
   return (
-    <button
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-    >
+    <button onClick={onClick} title={title} aria-label={title} className="project-icon-btn">
       {children}
+    </button>
+  );
+}
+
+/** Lecture / arrêt d'un serveur unique, visible directement sur la ligne du projet. */
+function ProjectLaunchButton({ project, server, getOperation }) {
+  const running = server.state === 'running';
+  const operation = getOperation(server.id);
+  const busy = !!operation || server.state === 'starting';
+  const label = `${running ? 'Arrêter' : 'Lancer'} ${server.name}`;
+  return (
+    <button
+      disabled={busy}
+      onClick={() => performServerAction(running ? 'stop' : 'start', project, server)}
+      className={`server-action-button ${running ? 'stop' : 'start'}`}
+      title={label}
+      aria-label={label}
+    >
+      {operation ? (
+        <Loader2 size={14} className="animate-spin" />
+      ) : running ? (
+        <Square size={13} />
+      ) : (
+        <Play size={14} />
+      )}
     </button>
   );
 }
@@ -308,7 +338,7 @@ export default function ProjectsView({
               </div>
               <button
                 onClick={handleToggleAll}
-                className="quiet-button h-9"
+                className="project-action"
                 title="Déplier ou replier tous les projets"
                 aria-expanded={!projects.every((p) => collapsedProjects[p.id])}
               >
@@ -319,7 +349,7 @@ export default function ProjectsView({
           )}
           <button
             onClick={onAddProject}
-            className="btn"
+            className="btn theme-accent-btn"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Nouveau</span>
@@ -338,7 +368,7 @@ export default function ProjectsView({
           </div>
           <button
             onClick={onAddProject}
-            className="btn"
+            className="btn theme-accent-btn"
           >
             Choisir un dossier
           </button>
@@ -363,7 +393,7 @@ export default function ProjectsView({
             return (
               <section key={project.id} className={hasActiveMenu ? 'relative z-30' : ''}>
                 {/* Titre de projet */}
-                <div className="group/head flex items-center justify-between gap-3 h-9">
+                <div className="flex items-center justify-between gap-3 h-9">
                   <button
                     onClick={() => toggleProjectCollapse(project.id)}
                     className="flex items-center gap-2.5 min-w-0 min-h-6 cursor-pointer text-left"
@@ -380,22 +410,38 @@ export default function ProjectsView({
                     )}
                   </button>
 
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {servers.length > 0 && (
+                      <IconBtn
+                        title="Ouvrir le terminal du projet"
+                        onClick={() => {
+                          const target = servers.find((s) => s.state === 'running') || servers[0];
+                          onOpenTerminal(target.id, target.name);
+                        }}
+                      >
+                        <Terminal className="w-3.5 h-3.5" />
+                      </IconBtn>
+                    )}
+                    {servers.length === 1 && (
+                      <ProjectLaunchButton project={project} server={servers[0]} getOperation={getOperation} />
+                    )}
                     {servers.length > 1 &&
                       (activeServersCount > 0 ? (
                         <button
                           disabled={servers.some((server) => getOperation(server.id))}
                           onClick={() => handleStopProjectServers(project)}
-                          className="h-7 px-2 rounded-md text-xs text-zinc-300 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          className="project-action project-action--danger"
                         >
+                          <Square size={11} />
                           Tout arrêter
                         </button>
                       ) : (
                         <button
                           disabled={servers.some((server) => getOperation(server.id))}
                           onClick={() => handleStartProjectServers(project)}
-                          className="h-7 px-2 rounded-md text-xs text-zinc-400 hover:text-emerald-300 hover:bg-emerald-500/10 opacity-0 group-hover/head:opacity-100 focus:opacity-100 transition-all cursor-pointer"
+                          className="project-action project-action--accent"
                         >
+                          <Play size={11} />
                           Tout lancer
                         </button>
                       ))}
@@ -410,11 +456,7 @@ export default function ProjectsView({
                               : { type: 'project', id: project.id }
                           );
                         }}
-                        className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
-                          isProjectMenuOpen
-                            ? 'bg-white/[0.08] text-white'
-                            : 'text-zinc-500 hover:text-white hover:bg-white/[0.05] opacity-0 group-hover/head:opacity-100'
-                        }`}
+                        className={`project-icon-btn ${isProjectMenuOpen ? 'is-open' : ''}`}
                         title="Options du projet"
                         aria-label="Options du projet"
                       >
@@ -422,7 +464,7 @@ export default function ProjectsView({
                       </button>
 
                       {isProjectMenuOpen && (
-                        <FloatingMenu className="rounded-lg p-1 text-xs">
+                        <FloatingMenu className="context-menu font-sans select-none">
                           <MenuItem
                             icon={Code2}
                             onClick={() => {
@@ -481,7 +523,6 @@ export default function ProjectsView({
                           >
                             Modifier le projet
                           </MenuItem>
-                          <div className="my-1 border-t border-[var(--line)]" />
                           <MenuItem
                             icon={Trash2}
                             danger
@@ -573,10 +614,10 @@ export default function ProjectsView({
                                       : { type: 'server', id: srv.id }
                                   );
                                 }}
-                                className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                                className={`project-icon-btn ${
                                   isServerMenuOpen
-                                    ? 'bg-white/[0.08] text-white'
-                                    : 'text-zinc-500 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover/row:opacity-100'
+                                    ? 'is-open'
+                                    : 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100'
                                 }`}
                                 title="Options du serveur"
                                 aria-label="Options du serveur"
@@ -585,7 +626,7 @@ export default function ProjectsView({
                               </button>
 
                               {isServerMenuOpen && (
-                                <FloatingMenu width={208} className="rounded-lg p-1 text-xs">
+                                <FloatingMenu width={208} className="context-menu font-sans select-none">
                                   {(srv.url || srv.port > 0) && (
                                     <MenuItem
                                       icon={Monitor}
@@ -618,8 +659,7 @@ export default function ProjectsView({
                                   >
                                     Modifier le serveur
                                   </MenuItem>
-                                  <div className="my-1 border-t border-[var(--line)]" />
-                                  <MenuItem
+                                          <MenuItem
                                     icon={Trash2}
                                     danger
                                     onClick={() => {
