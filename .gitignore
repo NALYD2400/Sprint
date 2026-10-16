@@ -27,3 +27,9 @@ dist-ssr
 src-tauri/target
 test-results/
 
+# Secrets et copies de travail
+.env
+.env.*
+*.bak
+*.tmp
+

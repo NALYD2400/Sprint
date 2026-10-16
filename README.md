@@ -73,14 +73,20 @@ src/
   services/      # actions serveur, préférences, stockage, thème
   styles/        # base commune puis styles de chaque surface
 src-tauri/src/
-  lib.rs             # commandes IPC, tray, update, tunnels
+  lib.rs             # état de l'app, cycle de vie, commandes projets/serveurs
   process_manager.rs # spawn/kill des process + streaming logs
   system_metrics.rs  # télémétrie CPU/RAM + Auto-Guard RAM
-  port_inspector.rs  # scan des ports TCP (API native)
+  port_inspector.rs  # scan des ports TCP (API native) + arrêt protégé
+  updater.rs         # téléchargement vérifié (SHA-256) et installation des mises à jour
+  env_files.rs       # lecture/écriture des fichiers .env
+  tunnel.rs          # tunnels localtunnel
+  shortcut.rs        # raccourci global d'affichage de la fenêtre
+  system.rs          # intégrations Windows (VS Code, explorateur, notifications, autostart)
   config_store.rs    # persistance atomique (tmp + rename, quarantaine)
   project_scanner.rs # détection de stack + branche git
+  tray_menu.rs       # icône et panneau de la zone de notification
 ```
 
 ## Config utilisateur
 
-`%APPDATA%\sprint\projects.json` — écriture atomique (`.tmp` + remplacement) avec sauvegarde de la version précédente (`.bak`). Les configurations Portly sont migrées au premier lancement. Un fichier corrompu est mis en quarantaine (`projects.corrupt-*.json`) plutôt qu'écrasé.
+`%APPDATA%\sprint\projects.json` — écriture atomique (`.tmp` + remplacement) avec sauvegarde de la version précédente (`.bak`). Les fichiers `.env` sont écrits sans copie `.bak` pour ne pas dupliquer de secrets. Les configurations Portly sont migrées au premier lancement. Un fichier corrompu est mis en quarantaine (`projects.corrupt-*.json`) plutôt qu'écrasé.
