@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::io::BufReader;
 use tokio::process::Child;
 
-const CREATE_NO_WINDOW: u32 = 0x08000000;
+use crate::CREATE_NO_WINDOW;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LogPayload {

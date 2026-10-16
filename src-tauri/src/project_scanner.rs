@@ -42,8 +42,8 @@ pub fn detect_stack(project_root: &str) -> DetectedStack {
                 let dev_deps = v.get("devDependencies").and_then(|d| d.as_object());
 
                 let has_dep = |name: &str| -> bool {
-                    deps.map_or(false, |d| d.contains_key(name))
-                        || dev_deps.map_or(false, |d| d.contains_key(name))
+                    deps.is_some_and(|d| d.contains_key(name))
+                        || dev_deps.is_some_and(|d| d.contains_key(name))
                 };
 
                 if has_dep("next") {

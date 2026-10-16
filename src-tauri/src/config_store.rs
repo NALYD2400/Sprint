@@ -128,21 +128,34 @@ pub fn with_suffix(path: &Path, suffix: &str) -> PathBuf {
 }
 
 pub fn atomic_write(path: &Path, contents: &str) -> Result<(), String> {
+    write_atomically(path, contents, true)
+}
+
+/// Comme `atomic_write`, sans copie `.bak` : les fichiers `.env` contiennent des secrets
+/// et ne doivent pas être dupliqués à côté du projet.
+pub fn atomic_write_without_backup(path: &Path, contents: &str) -> Result<(), String> {
+    write_atomically(path, contents, false)
+}
+
+fn write_atomically(path: &Path, contents: &str, keep_backup: bool) -> Result<(), String> {
     let _write_guard = CONFIG_WRITE_LOCK.lock();
     let tmp_path = with_suffix(path, "tmp");
 
     fs::write(&tmp_path, contents)
         .map_err(|e| format!("Erreur écriture {}: {}", tmp_path.display(), e))?;
 
-    if path.exists() {
+    if keep_backup && path.exists() {
         let bak_path = with_suffix(path, "bak");
         // Keep the current file readable until the final atomic replacement.
         fs::copy(path, &bak_path)
             .map_err(|e| format!("Erreur sauvegarde {}: {}", bak_path.display(), e))?;
     }
 
-    fs::rename(&tmp_path, path)
-        .map_err(|e| format!("Erreur finalisation {}: {}", path.display(), e))?;
+    if let Err(e) = fs::rename(&tmp_path, path) {
+        // Ne laisse pas de copie du contenu traîner à côté du fichier cible.
+        let _ = fs::remove_file(&tmp_path);
+        return Err(format!("Erreur finalisation {}: {}", path.display(), e));
+    }
     Ok(())
 }
 
@@ -283,6 +296,19 @@ mod validation_tests {
         assert!(!with_suffix(&base, "bak").exists());
         assert_eq!(fs::read_to_string(&base).unwrap(), "BASE=1");
         assert_ne!(with_suffix(&base, "tmp"), with_suffix(&local, "tmp"));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn secret_files_are_written_without_backup_copies() {
+        let dir = std::env::temp_dir().join(format!("sprint-env-nobak-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(".env");
+        atomic_write_without_backup(&file, "TOKEN=1").unwrap();
+        atomic_write_without_backup(&file, "TOKEN=2").unwrap();
+        assert_eq!(fs::read_to_string(&file).unwrap(), "TOKEN=2");
+        assert!(!with_suffix(&file, "bak").exists());
+        assert!(!with_suffix(&file, "tmp").exists());
         fs::remove_dir_all(&dir).unwrap();
     }
 }

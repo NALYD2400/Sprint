@@ -125,7 +125,7 @@ pub fn start_metrics_poller(app: AppHandle) {
                             if let Some(m) = metrics.server_metrics.get(&srv.id) {
                                 if m.ram_mb > limit as f64 {
                                     let now = Instant::now();
-                                    let cooldown_ok = restarts.get(&srv.id).map_or(true, |t| {
+                                    let cooldown_ok = restarts.get(&srv.id).is_none_or(|t| {
                                         now.duration_since(*t) >= RESTART_COOLDOWN
                                     });
                                     if cooldown_ok {

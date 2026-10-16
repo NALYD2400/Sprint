@@ -1,11 +1,12 @@
+//! Inspection des ports TCP en écoute et arrêt des processus qui les occupent.
+
+use crate::CREATE_NO_WINDOW;
 use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, TcpState};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
-
-const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PortEntry {
@@ -14,6 +15,19 @@ pub struct PortEntry {
     pub port: u16,
     pub pid: u32,
     pub process_name: String,
+}
+
+/// Processus système qu'un clic « Arrêter » sur un port ne doit jamais interrompre.
+const PROTECTED_PROCESSES: &[&str] = &[
+    "system", "smss", "csrss", "wininit", "winlogon", "services", "lsass", "svchost",
+    "fontdrvhost", "dwm", "explorer", "sihost", "spoolsv", "registry", "memory compression",
+];
+
+/// Vrai si le processus est un composant système (ou un nom inconnu, impossible à vérifier).
+fn is_protected_process(process_name: &str) -> bool {
+    let lower = process_name.trim().to_ascii_lowercase();
+    let name = lower.trim_end_matches(".exe");
+    name.is_empty() || name == "unknown" || PROTECTED_PROCESSES.contains(&name)
 }
 
 /// Liste les ports TCP en écoute via l'API native Windows (GetExtendedTcpTable),
@@ -93,5 +107,77 @@ pub fn kill_pid(pid: u32) -> Result<(), String> {
         Ok(out) if out.status.success() => Ok(()),
         Ok(out) => Err(String::from_utf8_lossy(&out.stderr).trim().to_string()),
         Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_ports_cmd() -> Result<Vec<PortEntry>, String> {
+    tauri::async_runtime::spawn_blocking(get_active_ports)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn kill_port_cmd(pid: u32) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        // PID 0/4 (système) et Sprint lui-même ne doivent jamais être tués depuis l'UI.
+        if pid <= 4 || pid == std::process::id() {
+            return Err("Ce processus ne peut pas être arrêté depuis Sprint.".to_string());
+        }
+        // Seul un PID qui écoute actuellement un port peut être tué.
+        let entries = get_active_ports()?;
+        let Some(entry) = entries.iter().find(|entry| entry.pid == pid) else {
+            return Err("Ce processus n'écoute plus de port.".to_string());
+        };
+        // Les services Windows (svchost, lsass…) hébergent souvent des ports : on ne les arrête jamais.
+        if is_protected_process(&entry.process_name) {
+            return Err(format!(
+                "« {} » est un processus protégé : Sprint ne peut pas l'arrêter.",
+                entry.process_name
+            ));
+        }
+        kill_pid(pid)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn ping_port_cmd(port: u16) -> Result<bool, String> {
+    let addr_v4 = format!("127.0.0.1:{}", port);
+    if let Ok(Ok(_)) = tokio::time::timeout(
+        std::time::Duration::from_millis(400),
+        tokio::net::TcpStream::connect(&addr_v4),
+    )
+    .await
+    {
+        return Ok(true);
+    }
+
+    let addr_v6 = format!("[::1]:{}", port);
+    if let Ok(Ok(_)) = tokio::time::timeout(
+        std::time::Duration::from_millis(400),
+        tokio::net::TcpStream::connect(&addr_v6),
+    )
+    .await
+    {
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_protected_process;
+
+    #[test]
+    fn system_processes_cannot_be_stopped_from_the_port_view() {
+        assert!(is_protected_process("svchost"));
+        assert!(is_protected_process("svchost.exe"));
+        assert!(is_protected_process("LSASS.EXE"));
+        assert!(is_protected_process("Unknown"));
+        assert!(!is_protected_process("node"));
+        assert!(!is_protected_process("python"));
     }
 }
