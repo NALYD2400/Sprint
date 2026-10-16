@@ -8,7 +8,7 @@ import { dashboardPrefs } from '../../services/dashboardPrefs';
 const ramText = (mb) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} Go` : `${Math.round(mb)} Mo`);
 const number = (value) => (Number.isFinite(value) ? Math.max(0, value) : 0);
 
-export default function OverviewView({
+export default function HomeView({
   metrics,
   projects,
   onSelectTab,
