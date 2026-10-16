@@ -225,27 +225,29 @@ export default function PortsView({ projects = [] }) {
             </button>
           ))}
         </div>
-        <div className="relative">
-          <Search size={14} className="text-zinc-400 absolute left-2.5 top-2.5" />
-          <input
-            className="control-input !pl-8 w-60"
-            aria-label="Filtrer les ports"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Port, projet, processus ou PID"
-          />
-          {search && <button className="ports-search-clear icon-button" aria-label="Effacer la recherche des ports"
-            onClick={() => setSearch('')}><X size={13} /></button>}
+        <div className="ports-tools-end">
+          <div className="relative">
+            <Search size={14} className="text-zinc-400 absolute left-2.5 top-2.5" />
+            <input
+              className="control-input !pl-8 w-60"
+              aria-label="Filtrer les ports"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Port, projet, processus ou PID"
+            />
+            {search && <button className="ports-search-clear icon-button" aria-label="Effacer la recherche des ports"
+              onClick={() => setSearch('')}><X size={13} /></button>}
+          </div>
+          <label className="ports-sort">Tri <select className="control-input" aria-label="Ordre des ports" value={sort.key}
+            onChange={(event) => setSort({ key: event.target.value, ascending: true })}>
+            <option value="priority">Projets en premier</option><option value="port">Numéro de port</option>
+            <option value="process_name">Processus</option><option value="pid">PID</option>
+          </select></label>
         </div>
       </div>
       <div className="ports-summary">
         <span>{filteredPorts.length} {filteredPorts.length === 1 ? 'port affiché' : 'ports affichés'}
           {filteredPorts.length !== ports.length ? ' sur ' + ports.length : ''}</span>
-        <label>Tri <select className="control-input" aria-label="Ordre des ports" value={sort.key}
-          onChange={(event) => setSort({ key: event.target.value, ascending: true })}>
-          <option value="priority">Projets en premier</option><option value="port">Numéro de port</option>
-          <option value="process_name">Processus</option><option value="pid">PID</option>
-        </select></label>
       </div>
       {fetchError && (
         <div role="alert" className="text-xs text-rose-300 flex items-start gap-2 py-3">
