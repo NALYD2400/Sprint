@@ -434,20 +434,25 @@ export default function ProjectsView({
                           </button>
                         ))}
                     </div>
-                    {isCollapsed && servers.length > 0 && (
-                      <IconBtn
-                        title="Ouvrir le terminal du projet"
-                        onClick={() => {
-                          const target = servers.find((s) => s.state === 'running') || servers[0];
-                          onOpenTerminal(target.id, target.name);
-                        }}
-                      >
-                        <Terminal className="w-3.5 h-3.5" />
-                      </IconBtn>
-                    )}
-                    {isCollapsed && servers.length === 1 && (
-                      <ProjectLaunchButton project={project} server={servers[0]} getOperation={getOperation} />
-                    )}
+                    {/* Mêmes colonnes que les lignes serveur : terminal, lancement, ⋯ tombent pile dessous */}
+                    <div className={`w-[30px] flex justify-end ${isCollapsed ? '' : 'invisible'}`}>
+                      {servers.length > 0 && (
+                        <IconBtn
+                          title="Ouvrir le terminal du projet"
+                          onClick={() => {
+                            const target = servers.find((s) => s.state === 'running') || servers[0];
+                            onOpenTerminal(target.id, target.name);
+                          }}
+                        >
+                          <Terminal className="w-3.5 h-3.5" />
+                        </IconBtn>
+                      )}
+                    </div>
+                    <div className="w-[68px] flex justify-end">
+                      {isCollapsed && servers.length === 1 && (
+                        <ProjectLaunchButton project={project} server={servers[0]} getOperation={getOperation} />
+                      )}
+                    </div>
                     <div className="relative" data-dropdown-container>
                       <button
                         onClick={(e) => {
@@ -604,7 +609,9 @@ export default function ProjectsView({
                               <Terminal className="w-3.5 h-3.5" />
                             </IconBtn>
 
-                            <ServerControls project={project} server={srv} compact />
+                            <div className="w-[68px] flex justify-end items-center gap-1.5">
+                              <ServerControls project={project} server={srv} compact />
+                            </div>
 
                             <div className="relative" data-dropdown-container>
                               <button
@@ -616,11 +623,7 @@ export default function ProjectsView({
                                       : { type: 'server', id: srv.id }
                                   );
                                 }}
-                                className={`project-icon-btn ${
-                                  isServerMenuOpen
-                                    ? 'is-open'
-                                    : 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100'
-                                }`}
+                                className={`project-icon-btn ${isServerMenuOpen ? 'is-open' : ''}`}
                                 title="Options du serveur"
                                 aria-label="Options du serveur"
                               >
