@@ -34,14 +34,12 @@
   color: var(--text-hi);
   background: var(--surface-3);
 }
-.projects-page .project-action--accent {
+/* Lancement groupé : bouton discret, seule l'icône prend l'accent */
+.projects-page .project-action--accent svg {
   color: var(--accent-readable);
-  background: rgba(var(--accent-color-rgb), 0.12);
-  border-color: rgba(var(--accent-color-rgb), 0.3);
 }
 .projects-page .project-action--accent:hover {
-  color: var(--accent-readable);
-  background: rgba(var(--accent-color-rgb), 0.2);
+  border-color: rgba(var(--accent-color-rgb), 0.35);
 }
 .projects-page .project-action--danger {
   color: var(--color-rose-300);

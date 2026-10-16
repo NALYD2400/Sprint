@@ -411,6 +411,29 @@ export default function ProjectsView({
                   </button>
 
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Emplacement fixe : le terminal et le lancement restent alignés d'une ligne à l'autre */}
+                    <div className="w-[132px] flex justify-end">
+                      {servers.length > 1 &&
+                        (activeServersCount > 0 ? (
+                          <button
+                            disabled={servers.some((server) => getOperation(server.id))}
+                            onClick={() => handleStopProjectServers(project)}
+                            className="project-action project-action--danger"
+                          >
+                            <Square size={11} />
+                            Tout arrêter
+                          </button>
+                        ) : (
+                          <button
+                            disabled={servers.some((server) => getOperation(server.id))}
+                            onClick={() => handleStartProjectServers(project)}
+                            className="project-action project-action--accent"
+                          >
+                            <Play size={11} />
+                            Tout lancer
+                          </button>
+                        ))}
+                    </div>
                     {isCollapsed && servers.length > 0 && (
                       <IconBtn
                         title="Ouvrir le terminal du projet"
@@ -425,27 +448,6 @@ export default function ProjectsView({
                     {isCollapsed && servers.length === 1 && (
                       <ProjectLaunchButton project={project} server={servers[0]} getOperation={getOperation} />
                     )}
-                    {servers.length > 1 &&
-                      (activeServersCount > 0 ? (
-                        <button
-                          disabled={servers.some((server) => getOperation(server.id))}
-                          onClick={() => handleStopProjectServers(project)}
-                          className="project-action project-action--danger"
-                        >
-                          <Square size={11} />
-                          Tout arrêter
-                        </button>
-                      ) : (
-                        <button
-                          disabled={servers.some((server) => getOperation(server.id))}
-                          onClick={() => handleStartProjectServers(project)}
-                          className="project-action project-action--accent"
-                        >
-                          <Play size={11} />
-                          Tout lancer
-                        </button>
-                      ))}
-
                     <div className="relative" data-dropdown-container>
                       <button
                         onClick={(e) => {
