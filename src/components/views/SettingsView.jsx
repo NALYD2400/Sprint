@@ -1,4 +1,4 @@
-import { SKILL_MARKDOWN } from '../settings/assistantSkill';
+import { SKILL_MARKDOWN } from '../../services/assistantSkill';
 import AboutSettings from '../settings/AboutSettings';
 import AssistantSettings from '../settings/AssistantSettings';
 import StorageSettings from '../settings/StorageSettings';

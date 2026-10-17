@@ -33,3 +33,6 @@ test-results/
 *.bak
 *.tmp
 
+
+# Fichiers générés par Tauri (régénérés au build)
+src-tauri/gen/

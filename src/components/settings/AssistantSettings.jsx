@@ -1,6 +1,6 @@
 import React from 'react';
 import { Copy, Download } from 'lucide-react';
-import { SKILL_MARKDOWN } from './assistantSkill';
+import { SKILL_MARKDOWN } from '../../services/assistantSkill';
 
 
 export default function AssistantSettings({ copiedSkill, handleCopySkill, handleDownloadSkill }) {
