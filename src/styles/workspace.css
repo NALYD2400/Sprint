@@ -75,6 +75,105 @@
   grid-column: 1 / -1;
   padding-top: 8px;
 }
+.dashboard-server-heading,
+.dashboard-server-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.server-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.server-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--radius-ctl);
+  font-size: 13px;
+  color: var(--text-mid);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.server-filters button:hover {
+  background: var(--surface-2);
+  color: var(--text-hi);
+}
+.server-filters button[aria-pressed='true'] {
+  background: var(--surface-3);
+  color: var(--text-hi);
+}
+.server-filters button span {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-mid);
+}
+.dashboard-sort-note {
+  font-size: 12px;
+  color: var(--text-mid);
+}
+.dashboard-filter-empty {
+  padding: 28px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-mid);
+}
+.server-overview-info {
+  min-width: 0;
+  flex: 1;
+}
+.server-overview-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  row-gap: 2px;
+  font-size: 14px;
+  color: var(--text-hi);
+}
+.server-overview-name > span {
+  min-width: 0;
+  max-width: 100%;
+}
+.server-overview-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-mid);
+}
+.server-overview-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-mid);
+}
+.server-attention {
+  color: var(--accent-readable);
+}
+.favorite-marker,
+.project-pin[aria-pressed='true'] {
+  color: var(--accent-readable);
+}
+.favorite-marker {
+  flex-shrink: 0;
+}
+.projects-page .text-xs {
+  font-size: 13px;
+}
+.projects-page .group\/row .text-\[13px\] {
+  font-size: 14px;
+}
 .resource-chart {
   min-width: 0;
   padding: 4px 0 18px;

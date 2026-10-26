@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, SlidersHorizontal, Globe, ScrollText, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, SlidersHorizontal, Globe, ScrollText, ArrowRight, Pin, AlertTriangle } from 'lucide-react';
 import PageHeader from '../ui/PageHeader';
 import ResourceChart from '../ui/ResourceChart';
 import ServerControls from '../ui/ServerControls';
@@ -19,10 +19,26 @@ export default function HomeView({
   onOpenTerminal,
 }) {
   const config = dashboardPrefs(prefs?.dashboard);
+  const [serverFilter, setServerFilter] = useState('all');
+  const favorites = new Set(prefs?.favoriteProjectIds || []);
   const servers = projects.flatMap((project) =>
     (project.servers || []).map((server) => ({ ...server, project })),
   );
   const running = servers.filter((server) => server.state === 'running');
+  const needsAttention = (server) => server.state === 'error'
+    || (server.state !== 'running' && server.state !== 'starting' && Boolean(server.lastExitReason));
+  const active = (server) => server.state === 'running' || server.state === 'starting';
+  const priority = (server) => needsAttention(server) ? 0 : active(server) ? 1 : 2;
+  const errorCount = servers.filter(needsAttention).length;
+  const filters = [
+    { id: 'all', label: 'Tous', count: servers.length },
+    { id: 'active', label: 'Actifs', count: servers.filter(active).length },
+    { id: 'errors', label: 'Erreurs', count: errorCount },
+  ];
+  const visibleServers = servers.filter((server) => serverFilter === 'all'
+    || (serverFilter === 'active' ? active(server) : needsAttention(server)))
+    .sort((a, b) => priority(a) - priority(b)
+      || Number(favorites.has(b.project.id)) - Number(favorites.has(a.project.id)));
   const system = config.scope === 'system';
   const cpuField = system ? 'cpu_usage' : 'managed_cpu_pct';
   const ramField = system ? 'ram_used_mb' : 'managed_ram_mb';
@@ -77,28 +93,52 @@ export default function HomeView({
     ),
     servers: (
       <section className="dashboard-servers">
-        <div className="flex justify-between items-center mb-3">
+        <div className="dashboard-server-heading">
           <h2 className="text-sm font-medium text-zinc-100">Serveurs</h2>
           <button onClick={() => onSelectTab('projects')} className="quiet-button">
             Gérer les projets <ArrowRight size={14} />
           </button>
         </div>
+        {servers.length > 0 && (
+          <div className="dashboard-server-toolbar">
+            <div className="server-filters" role="group" aria-label="Filtrer les serveurs">
+              {filters.map((filter) => (
+                <button type="button" key={filter.id} aria-pressed={serverFilter === filter.id}
+                  onClick={() => setServerFilter(filter.id)}>
+                  {filter.label} <span>{filter.count}</span>
+                </button>
+              ))}
+            </div>
+            <p className="dashboard-sort-note">Erreurs et serveurs actifs en premier</p>
+          </div>
+        )}
         {servers.length === 0 ? (
           <p className="text-sm text-zinc-400 py-6">
             Ajoutez un projet pour configurer votre premier serveur.
           </p>
+        ) : visibleServers.length === 0 ? (
+          <div className="dashboard-filter-empty" role="status">
+            <p>{serverFilter === 'errors' ? 'Aucun serveur en erreur.' : 'Aucun serveur actif.'}</p>
+            <button type="button" className="quiet-button" onClick={() => setServerFilter('all')}>
+              Afficher tous les serveurs
+            </button>
+          </div>
         ) : (
-          servers.map((server) => (
-            <div key={server.id} className="server-overview-row">
+          visibleServers.map((server) => (
+            <div key={server.id} data-server-id={server.id} className="server-overview-row">
+              {needsAttention(server) ? <AlertTriangle size={15} className="server-attention shrink-0" aria-label="Erreur" /> : (
               <span
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${server.state === 'running' ? 'bg-emerald-400' : 'bg-zinc-500'}`}
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${server.state === 'running' ? 'bg-emerald-400' : server.state === 'starting' ? 'bg-amber-400' : 'bg-zinc-500'}`}
               />
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-zinc-100 truncate">
-                  {server.project.name} <span className="text-zinc-400 ml-2">{server.name}</span>
+              )}
+              <div className="server-overview-info">
+                <p className="server-overview-name">
+                  {favorites.has(server.project.id) && <Pin size={13} className="favorite-marker" aria-label="Projet favori" />}
+                  <span className="truncate">{server.project.name}</span>
+                  <span className="server-overview-detail">{server.name}</span>
                 </p>
-                <p className="text-xs text-zinc-500 mt-1 truncate">
-                  {server.lastExitReason ? 'Arrêt inattendu · ' + server.lastExitReason : server.state === 'running'
+                <p className={`server-overview-status${needsAttention(server) ? ' server-attention' : ''}`} title={server.lastExitReason || undefined}>
+                  {needsAttention(server) && server.lastExitReason ? 'Arrêt inattendu · ' + server.lastExitReason : server.state === 'running'
                     ? 'En cours'
                     : server.state === 'starting'
                       ? 'Démarrage'

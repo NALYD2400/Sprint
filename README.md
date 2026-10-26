@@ -55,7 +55,7 @@ Les tests UI utilisent Playwright avec les mocks IPC officiels de Tauri : ils n�
 Voir [la revue UI/UX et les corrections](docs/ux-review-2026-10-07.md).
 Voir aussi [les améliorations et le nettoyage du code](docs/improvements-2026-10-07.md).
 
-La version 0.5.8 harmonise les pages Projets, Ports et Logs avec le thème choisi. Voir [les notes de version](docs/releases/v0.5.8.md).
+La version 0.5.9 ajoute les projets favoris, les filtres du tableau de bord et les actions de démarrage, arrêt et redémarrage dans Ctrl+K. Voir [les notes de version](docs/releases/v0.5.9.md).
 
 ## Structure
 

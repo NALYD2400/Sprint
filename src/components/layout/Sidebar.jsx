@@ -124,7 +124,6 @@ export default function Sidebar({
         >
           <HelpCircle className="w-[18px] h-[18px]" strokeWidth={1.75} />
           {!collapsed && <span className="flex-1 text-left">Aide</span>}
-          {!collapsed && <kbd className="key">?</kbd>}
         </button>
 
         <NavButton

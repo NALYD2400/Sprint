@@ -80,6 +80,7 @@ body {
 main#main-content {
   container: workspace / inline-size;
   scrollbar-gutter: stable;
+  background: color-mix(in srgb, var(--bg-base) 42%, transparent);
 }
 .modal-backdrop > .modal-panel {
   min-height: 0;

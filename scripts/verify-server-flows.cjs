@@ -163,6 +163,108 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     check(await page.getByRole('combobox', { name: 'Serveur à prévisualiser' }).inputValue() === 'server1', 'removed remembered server falls back to an available server');
     check(await page.getByRole('button', { name: 'Ordinateur', exact: true }).getAttribute('aria-pressed') === 'true', 'invalid remembered format uses the default');
     check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === 'http://localhost:3000', 'invalid remembered URL is never restored');
+    // Command palette uses the shared lifecycle and keeps pending operations protected.
+    await page.keyboard.press('Control+1');
+    const palette = page.getByRole('dialog', { name: 'Rechercher dans Sprint' });
+    const paletteSearch = page.getByRole('combobox', { name: 'Recherche de commandes' });
+    const openCommands = async (query) => {
+      await page.keyboard.press('Control+k');
+      await paletteSearch.fill(query);
+      await palette.getByRole('option').first().waitFor();
+    };
+    await page.evaluate(() => { window.__holdStart = true; });
+    const beforePaletteStart = (await commands()).length;
+    await openCommands('lancer Serveur arrêté');
+    check(await palette.getByRole('option', { name: /^Démarrer · Serveur arrêté/ }).count() === 1,
+      'palette finds start by its lancer alias and server name');
+    await paletteSearch.press('Enter');
+    await palette.waitFor({ state: 'hidden' });
+    const paletteStarts = (await commands()).slice(beforePaletteStart).filter((item) => item.cmd === 'start_server_cmd');
+    check(paletteStarts.length === 1 && paletteStarts[0].args.serverId === 'server3'
+      && paletteStarts[0].args.cwd === projects[0].root
+      && paletteStarts[0].args.command === projects[0].servers[2].command,
+      'palette starts only the selected server with its real directory and command');
+    await openCommands('lancer Serveur arrêté');
+    const pendingStart = palette.getByRole('option', { name: /^Démarrer · Serveur arrêté/ });
+    check(await pendingStart.isDisabled() && (await pendingStart.innerText()).includes('Démarrage en cours'),
+      'reopened palette shows and disables a pending start');
+    await paletteSearch.press('Enter');
+    check(await palette.isVisible() && (await commands()).slice(beforePaletteStart).filter((item) => item.cmd === 'start_server_cmd').length === 1,
+      'Enter cannot repeat a pending command or close its explanation');
+    await page.screenshot({ path: art + '/sprint-palette-pending-light.png' });
+    await page.evaluate(() => { window.__holdStart = false; window.__resolveStart(); });
+    await page.waitForFunction(() => !document.querySelector('.palette-option')?.disabled);
+    check(await pendingStart.isEnabled(), 'open palette updates immediately when an operation finishes');
+    await paletteSearch.press('Escape');
+    await emit({ server_id: 'server3', state: 'running', pid: 2003 });
+    await openCommands('3002');
+    check((await palette.getByRole('option', { selected: true }).innerText()).startsWith('Logs ·'),
+      'generic port search preserves navigation as its default action');
+    check(await palette.getByRole('option', { name: /^Arrêter · Serveur arrêté/ }).count() === 1
+      && await palette.getByRole('option', { name: /^Redémarrer · Serveur arrêté/ }).count() === 1
+      && await palette.getByRole('option', { name: /^Démarrer · Serveur arrêté/ }).count() === 0,
+      'port search offers stop and restart for a running server');
+    await paletteSearch.fill('arreter Serveur arrêté');
+    const beforePaletteStop = (await commands()).length;
+    await paletteSearch.press('Enter');
+    await palette.waitFor({ state: 'hidden' });
+    const paletteStops = (await commands()).slice(beforePaletteStop).filter((item) => item.cmd === 'stop_server_cmd');
+    check(paletteStops.length === 1 && paletteStops[0].args.serverId === 'server3', 'unaccented keyboard search stops only its selected server');
+    await emit({ server_id: 'server3', state: 'stopped', intentional: true });
+
+    await page.evaluate(() => { window.__holdStop = true; });
+    const beforePaletteRestart = (await commands()).length;
+    await openCommands('relancer Interface');
+    await paletteSearch.press('Enter');
+    await palette.waitFor({ state: 'hidden' });
+    check(!(await commands()).slice(beforePaletteRestart).some((item) => item.cmd === 'start_server_cmd'),
+      'palette restart waits for stop completion');
+    await openCommands('relancer Interface');
+    check(await palette.getByRole('option', { name: /^Redémarrer · Interface/ }).isDisabled(),
+      'pending restart is protected across palette openings');
+    await paletteSearch.fill('logs Interface');
+    check(await palette.getByRole('option', { name: /^Logs · Interface/ }).isEnabled(),
+      'logs remain accessible during a lifecycle operation');
+    await paletteSearch.press('Escape');
+    await page.evaluate(() => { window.__holdStop = false; window.__resolveStop(); });
+    await page.waitForFunction((before) => window.__commands.slice(before).some((item) => item.cmd === 'start_server_cmd'), beforePaletteRestart);
+    const paletteSequence = (await commands()).slice(beforePaletteRestart).filter((item) => /^(start|stop)_server_cmd$/.test(item.cmd));
+    check(paletteSequence.length === 2 && paletteSequence[0].cmd === 'stop_server_cmd'
+      && paletteSequence[1].cmd === 'start_server_cmd' && paletteSequence.every((item) => item.args.serverId === 'server1'),
+      'palette restart performs exactly one stop and one start for the same server');
+
+    await page.evaluate(() => { window.__failStop = true; });
+    const beforePaletteFailure = (await commands()).length;
+    await openCommands('relancer Interface');
+    await paletteSearch.press('Enter');
+    await palette.waitFor({ state: 'hidden' });
+    await page.waitForFunction(() => window.__toasts.at(-1)?.title === 'Redémarrage impossible');
+    check(!(await commands()).slice(beforePaletteFailure).some((item) => item.cmd === 'start_server_cmd'),
+      'failed palette stop reports the error and never starts a replacement');
+    await page.evaluate(() => { window.__failStop = false; window.__failStart = true; });
+    await openCommands('lancer Serveur arrêté');
+    await paletteSearch.press('Enter');
+    await palette.waitFor({ state: 'hidden' });
+    await page.waitForFunction(() => window.__toasts.at(-1)?.title === 'Lancement impossible');
+    await page.evaluate(() => { window.__failStart = false; });
+    await openCommands('lancer Serveur arrêté');
+    check(await palette.getByRole('option', { name: /^Démarrer · Serveur arrêté/ }).isEnabled(),
+      'failed palette start releases its lock for retry');
+    await paletteSearch.press('Escape');
+    await emit({ server_id: 'server3', state: 'starting' });
+    await openCommands('lancer Serveur arrêté');
+    check(await palette.getByRole('option', { name: /^Démarrer · Serveur arrêté/ }).isDisabled(),
+      'starting backend state blocks commands even without a local operation');
+    await paletteSearch.press('Escape');
+    await emit({ server_id: 'server3', state: 'stopped', intentional: true });
+    await openCommands('3000');
+    await page.evaluate(async () => {
+      const { applyPrefs, loadPrefs } = await import('/src/services/prefs.js');
+      applyPrefs({ ...loadPrefs(), theme: 'dark' });
+    });
+    await page.setViewportSize({ width: 960, height: 620 });
+    check(await palette.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1), 'palette lifecycle commands fit the minimum window size');
+    await page.screenshot({ path: art + '/sprint-palette-actions-dark.png' });
     check(errors.length === 0, 'no browser errors');
     fs.writeFileSync(path.join(art, 'server-flows-report.json'), JSON.stringify({ checks: results.length, results, errors }, null, 2));
     console.log(JSON.stringify({ checks: results.length, errors }, null, 2));

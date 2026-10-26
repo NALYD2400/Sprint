@@ -12,10 +12,23 @@ import {
   Plus,
   Folder,
   CornerDownLeft,
+  Play,
+  Square,
+  RotateCw,
+  Loader2,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import Modal from '../ui/Modal';
 import { triggerToast } from '../../services/toastBus';
+import { performServerAction } from '../../services/serverActions';
+import useServerOperations from '../../hooks/useServerOperations';
+
+const SERVER_ACTIONS = {
+  start: { label: 'Démarrer', icon: Play, keywords: 'lancer start' },
+  stop: { label: 'Arrêter', icon: Square, keywords: 'stop stopper' },
+  restart: { label: 'Redémarrer', icon: RotateCw, keywords: 'relancer restart' },
+};
+const OPERATION_LABELS = { start: 'Démarrage en cours…', stop: 'Arrêt en cours…', restart: 'Redémarrage en cours…' };
 
 const normalize = (text) =>
   String(text || '')
@@ -33,6 +46,7 @@ export default function CommandPaletteModal({
 }) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const getOperation = useServerOperations();
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const titleId = useId();
@@ -113,6 +127,23 @@ export default function CommandPaletteModal({
             icon: ExternalLink,
             action: () => invoke('open_browser', { url: 'http://localhost:' + server.port }),
           });
+        const running = server.state === 'running';
+        const actions = running ? ['stop', 'restart'] : ['start'];
+        actions.forEach((action) => {
+          const command = SERVER_ACTIONS[action];
+          result.push({
+            ...base,
+            id: action + '_' + server.id,
+            title: command.label + ' · ' + server.name,
+            subtitle: [running ? 'En cours' : server.state === 'error' ? 'En erreur' : 'Arrêté',
+              server.port > 0 ? 'Port :' + server.port : null, server.command].filter(Boolean).join(' · '),
+            keywords: command.keywords,
+            icon: command.icon,
+            serverId: server.id,
+            starting: server.state === 'starting',
+            action: () => performServerAction(action, project, server),
+          });
+        });
       });
     });
     return result;
@@ -140,7 +171,7 @@ export default function CommandPaletteModal({
   }, [filtered]);
 
   const execute = async (item) => {
-    if (!item) return;
+    if (!item || item.starting || (item.serverId && getOperation(item.serverId))) return;
     onClose();
     try {
       await item.action();
@@ -229,7 +260,11 @@ export default function CommandPaletteModal({
                   {group.label}
                 </div>
                 {group.items.map((item) => {
-                  const Icon = item.icon;
+                  const operation = item.serverId ? getOperation(item.serverId) : null;
+                  const busy = Boolean(operation) || item.starting;
+                  const detail = operation ? OPERATION_LABELS[operation]
+                    : item.starting ? OPERATION_LABELS.start : item.subtitle;
+                  const Icon = busy ? Loader2 : item.icon;
                   const active = item.index === selectedIndex;
                   return (
                     <button
@@ -239,19 +274,21 @@ export default function CommandPaletteModal({
                       id={'palette-' + item.id}
                       role="option"
                       aria-selected={active}
+                      aria-disabled={busy || undefined}
+                      disabled={busy}
                       data-index={item.index}
                       onMouseMove={() => setActiveIndex(item.index)}
                       onClick={() => execute(item)}
                       className="palette-option"
                     >
-                      <Icon size={17} className="palette-option-icon" aria-hidden="true" />
+                      <Icon size={17} className={`palette-option-icon${busy ? ' animate-spin' : ''}`} aria-hidden="true" />
                       <span className="palette-option-copy">
                         <span className="palette-option-title">{item.title}</span>
-                        <span className="palette-option-detail" title={item.subtitle}>
-                          {item.subtitle}
+                        <span className="palette-option-detail" title={detail}>
+                          {detail}
                         </span>
                       </span>
-                      {active && (
+                      {active && !busy && (
                         <CornerDownLeft size={14} className="palette-enter" aria-hidden="true" />
                       )}
                     </button>
@@ -287,7 +324,7 @@ export default function CommandPaletteModal({
             <kbd>↓</kbd> Naviguer
           </span>
           <span>
-            <kbd>↵</kbd> Ouvrir
+            <kbd>↵</kbd> Exécuter
           </span>
         </div>
       </div>

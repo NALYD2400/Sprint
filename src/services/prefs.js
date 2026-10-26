@@ -31,6 +31,7 @@ export const DEFAULT_PREFS = {
   backgroundSpeed: 100,
   sidebarCollapsed: false,
   onboardingDismissed: false,
+  favoriteProjectIds: [],
   dashboard: DEFAULT_DASHBOARD,
 };
 
@@ -42,6 +43,9 @@ export function loadPrefs() {
       ...DEFAULT_PREFS,
       ...saved,
       ...backgroundPrefs(saved),
+      favoriteProjectIds: Array.isArray(saved?.favoriteProjectIds)
+        ? [...new Set(saved.favoriteProjectIds.filter((id) => typeof id === 'string'))]
+        : [],
       dashboard: dashboardPrefs(saved?.dashboard),
     };
   } catch {

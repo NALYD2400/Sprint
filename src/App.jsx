@@ -107,6 +107,16 @@ export default function App() {
     });
   };
 
+  const toggleFavoriteProject = (projectId) => {
+    setPrefs((prev) => {
+      const ids = prev.favoriteProjectIds;
+      const next = { ...prev, favoriteProjectIds: ids.includes(projectId)
+        ? ids.filter((id) => id !== projectId) : [...ids, projectId] };
+      savePrefs(next);
+      return next;
+    });
+  };
+
   // Applique thème, taille de texte et animations ; suit Windows en mode « Automatique ».
   useEffect(() => {
     applyPrefs(prefs);
@@ -326,6 +336,8 @@ export default function App() {
                   <ProjectsView
                     projects={projects}
                     saveProjects={saveProjects}
+                    favoriteProjectIds={prefs.favoriteProjectIds}
+                    onToggleFavorite={toggleFavoriteProject}
                     onOpenTerminal={handleOpenTerminal}
                     onOpenBrowser={handleOpenBrowser}
                     onOpenEnvModal={(root) => setEnvModalRoot(root)}

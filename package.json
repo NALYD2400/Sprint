@@ -1,7 +1,7 @@
 {
   "name": "sprint",
   "private": true,
-  "version": "0.5.8",
+  "version": "0.5.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test:ui": "node scripts/verify-ui.cjs",
+    "test:dashboard": "node scripts/verify-dashboard.cjs",
     "test:flows": "node scripts/verify-server-flows.cjs"
   },
   "dependencies": {

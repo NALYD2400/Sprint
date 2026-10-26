@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   Copy,
   AlertTriangle,
+  Pin,
 } from 'lucide-react';
 import { triggerToast } from '../../services/toastBus';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -104,6 +105,8 @@ export default function ProjectsView({
   onEditProject,
   onEditServer,
   onAddServer,
+  favoriteProjectIds = [],
+  onToggleFavorite,
 }) {
   const [collapsedProjects, setCollapsedProjects] = useState(() => {
     try {
@@ -258,7 +261,7 @@ export default function ProjectsView({
   };
 
   const q = search.trim().toLowerCase();
-  const filteredProjects = q
+  const matchingProjects = q
     ? projects.filter((p) => {
         const inProject =
           p.name.toLowerCase().includes(q) ||
@@ -273,6 +276,10 @@ export default function ProjectsView({
         return inProject || inServers;
       })
     : projects;
+  const favorites = new Set(favoriteProjectIds);
+  const filteredProjects = [...matchingProjects].sort(
+    (a, b) => Number(favorites.has(b.id)) - Number(favorites.has(a.id)),
+  );
 
   const totalRunningServers = projects.reduce(
     (acc, p) => acc + (p.servers || []).filter((s) => s.state === 'running').length,
@@ -361,7 +368,7 @@ export default function ProjectsView({
             const meta = [project.framework, project.branch].filter(Boolean).join(' · ');
 
             return (
-              <section key={project.id} className={hasActiveMenu ? 'relative z-30' : ''}>
+              <section key={project.id} data-project-id={project.id} className={hasActiveMenu ? 'relative z-30' : ''}>
                 {/* Titre de projet */}
                 <div className="group/head flex items-center justify-between gap-3 h-9">
                   <button
@@ -381,6 +388,16 @@ export default function ProjectsView({
                   </button>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      className="icon-button project-pin"
+                      aria-label={`${favorites.has(project.id) ? 'Désépingler' : 'Épingler'} ${project.name}`}
+                      title={favorites.has(project.id) ? 'Retirer des favoris' : 'Épingler en haut des projets'}
+                      aria-pressed={favorites.has(project.id)}
+                      onClick={() => onToggleFavorite?.(project.id)}
+                    >
+                      <Pin size={15} fill={favorites.has(project.id) ? 'currentColor' : 'none'} />
+                    </button>
                     {servers.length > 1 &&
                       (activeServersCount > 0 ? (
                         <button

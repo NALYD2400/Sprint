@@ -1,6 +1,6 @@
 [package]
 name = "sprint"
-version = "0.5.8"
+version = "0.5.9"
 description = "Sprint Developer Supervisor & Process Manager"
 authors = ["Dylan"]
 edition = "2021"

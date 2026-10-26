@@ -76,6 +76,12 @@
 .palette-option[aria-selected='true'] {
   background: var(--surface-3);
 }
+.palette-option:disabled {
+  cursor: not-allowed;
+}
+.palette-option:disabled .palette-option-title {
+  color: var(--text-mid);
+}
 .palette-option-icon {
   color: var(--text-mid);
   flex-shrink: 0;
