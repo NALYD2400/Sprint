@@ -377,13 +377,20 @@ main#main-content[data-view='settings'] {
   cursor: pointer;
   margin-left: 6px;
 }
+.settings-disclosure,
 .skill-details {
   margin-top: 24px;
   font-size: 12px;
   color: var(--text-mid);
 }
+.settings-disclosure > summary,
 .skill-details summary {
   cursor: pointer;
+}
+.settings-disclosure > summary {
+  color: var(--text-hi);
+  font-size: 13px;
+  padding: 10px 0;
 }
 .skill-details pre {
   padding: 16px 0;

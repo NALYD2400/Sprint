@@ -2,6 +2,8 @@ import React from 'react';
 import SettingRow from '../ui/SettingRow';
 import { invoke } from '@tauri-apps/api/core';
 import pkg from '../../../package.json';
+import AssistantSettings from './AssistantSettings';
+import { GITHUB_REPO } from '../../services/updates';
 
 
 export default function AboutSettings({ onOpenUpdateModal }) {
@@ -20,13 +22,17 @@ export default function AboutSettings({ onOpenUpdateModal }) {
           className="btn"
           onClick={() =>
             invoke('open_browser', {
-              url: 'https://github.com/NALYD2400/portly',
+              url: `https://github.com/${GITHUB_REPO}`,
             })
           }
         >
           GitHub
         </button>
       </SettingRow>
+      <details className="settings-disclosure">
+        <summary>Configurer un assistant IA</summary>
+        <AssistantSettings />
+      </details>
     </>
   );
 }

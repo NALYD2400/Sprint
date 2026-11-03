@@ -8,7 +8,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
   const { createServer } = await import('vite');
   const server = await createServer({
     logLevel: 'silent',
-    server: { host: '127.0.0.1', port: 0, strictPort: true },
+    server: { host: '127.0.0.1', port: 0, strictPort: true, hmr: false },
   });
   await server.listen();
   base = 'http://127.0.0.1:' + server.httpServer.address().port;
@@ -22,22 +22,16 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       args: ['--disable-features=LocalNetworkAccessChecks'],
     });
     const page = await browser.newPage({ viewport: { width: 1320, height: 860 } });
-    let testEntry = entry;
     const errors = [];
     const results = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.route(base + '/**', async (route) => {
       const url = new URL(route.request().url());
       if (url.pathname === '/__layout-test-entry.js')
-        return route.fulfill({ contentType: 'text/javascript', body: testEntry });
+        return route.fulfill({ contentType: 'text/javascript', body: entry });
       if (url.pathname === '/') {
         const response = await route.fetch();
         const html = await response.text();
-        const mainUrl = html.match(/src="([^"]*main\.jsx[^"]*)"/)[1];
-        testEntry = entry.replace(
-          "await import('/src/main.jsx');",
-          'await import(' + JSON.stringify(mainUrl) + ');',
-        );
         const body = html.replace(/src="\/src\/main\.jsx[^"]*"/, 'src="/__layout-test-entry.js"');
         return route.fulfill({ response, body });
       }
@@ -239,6 +233,37 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await page.getByRole('radio', { name: 'Réduites', exact: true }).click();
     await page.getByRole('switch', { name: 'Arrière-plan animé', exact: true }).click();
     await page.screenshot({ path: art + '/sprint-settings-stable.png' });
+    check(await nav.getByRole('button').count() === 6, 'settings have six focused sections');
+    await nav.getByRole('button', { name: 'Serveurs & logs', exact: true }).click();
+    const ansiSetting = page.getByRole('switch', { name: 'Nettoyer les codes ANSI', exact: true });
+    check(!await ansiSetting.isVisible(), 'technical log options are collapsed by default');
+    check(await page.getByRole('switch', { name: 'Relancer après un crash', exact: true }).isVisible(),
+      'crash recovery remains directly available');
+    await page.locator('.settings-disclosure > summary').click();
+    check(await ansiSetting.isVisible(), 'log options remain accessible');
+    await ansiSetting.click();
+    await page.waitForFunction(() => localStorage.getItem('sprint_cfg_cleanansi') === 'false');
+    await ansiSetting.click();
+    await page.waitForFunction(() => localStorage.getItem('sprint_cfg_cleanansi') === 'true');
+    await nav.getByRole('button', { name: 'À propos', exact: true }).click();
+    check(await page.locator('.settings-save-status').count() === 0, 'read-only about section has no autosave message');
+    check(!await page.getByRole('button', { name: 'Copier le skill', exact: true }).isVisible(),
+      'assistant tools stay out of the main settings flow');
+    await page.locator('.settings-disclosure > summary').click();
+    await page.getByRole('button', { name: 'Copier le skill', exact: true }).click();
+    const skill = await page.evaluate(() => window.__clipboard);
+    check(skill.includes('name: sprint') && await page.getByRole('button', { name: 'Copié', exact: true }).isVisible(),
+      'assistant skill can still be copied with inline feedback');
+    const skillDownloadEvent = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Télécharger', exact: true }).click();
+    const skillDownload = await skillDownloadEvent;
+    check(skillDownload.suggestedFilename() === 'SKILL.md'
+      && fs.readFileSync(await skillDownload.path(), 'utf8') === skill, 'assistant download preserves the complete skill');
+    for (const theme of ['light', 'dark']) {
+      await setTheme(theme);
+      await page.screenshot({ path: art + '/sprint-settings-about-' + theme + '.png' });
+    }
+    await setTheme('light');
     await nav.getByRole('button', { name: 'Système', exact: true }).click();
     const notification = page.getByRole('switch', { name: 'Notifications dans Sprint' });
     await notification.click();
@@ -641,8 +666,8 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await page.setViewportSize({width: 1320, height: 860});
     await setTheme('light');
     // A portable download must never replace the installer in the update flow.
-    const updateUrl = 'https://github.com/NALYD2400/portly/releases/download/v9.0.0/Sprint_9.0.0_x64-setup.exe';
-    await page.route('https://api.github.com/repos/NALYD2400/portly/releases/latest', (route) => route.fulfill({json: {
+    const updateUrl = 'https://github.com/NALYD2400/Sprint/releases/download/v9.0.0/Sprint_9.0.0_x64-setup.exe';
+    await page.route('https://api.github.com/repos/NALYD2400/Sprint/releases/latest', (route) => route.fulfill({json: {
       tag_name: 'v9.0.0', body: 'Version de test', assets: [
         {name: 'Sprint_9.0.0_x64-portable.exe', browser_download_url: updateUrl.replace('setup', 'portable')},
         {name: 'Sprint_9.0.0_x64-setup.exe', browser_download_url: updateUrl},
@@ -656,14 +681,14 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     check((await cmds()).some((command) => command.cmd === 'download_update_cmd' && command.args.url === updateUrl),
       'update chooses installer even when portable asset is listed first');
     await page.getByRole('button', {name: 'Fermer la fenêtre de mise à jour', exact: true}).click();
-    await page.route('https://api.github.com/repos/NALYD2400/portly/releases/latest', (route) => route.fulfill({json: {tag_name: 'v9.0.0', assets: []}}));
+    await page.route('https://api.github.com/repos/NALYD2400/Sprint/releases/latest', (route) => route.fulfill({json: {tag_name: 'v9.0.0', assets: []}}));
     await page.getByRole('button', {name: 'Mises à jour', exact: true}).click();
     await page.getByRole('button', {name: 'Télécharger la mise à jour', exact: true}).click();
     await page.getByText('La mise à jour est prête', {exact: true}).waitFor();
     check((await cmds()).filter((command) => command.cmd === 'download_update_cmd' && command.args.url === updateUrl).length === 2,
       'update fallback uses the Sprint installer filename');
     await page.getByRole('button', {name: 'Fermer la fenêtre de mise à jour', exact: true}).click();
-    await page.unroute('https://api.github.com/repos/NALYD2400/portly/releases/latest');
+    await page.unroute('https://api.github.com/repos/NALYD2400/Sprint/releases/latest');
     // Bulk stop of a project waits for explicit confirmation before sending any stop command.
     await page.keyboard.press('Control+2');
     const stopsBefore = (await cmds()).filter((x) => x.cmd === 'stop_server_cmd').length;

@@ -12,7 +12,7 @@ export const SKILL_MARKDOWN = [
   '',
   '## System Architecture',
   '',
-  '- **GitHub Repository**: [NALYD2400/portly](https://github.com/NALYD2400/portly)',
+  '- **GitHub Repository**: [NALYD2400/Sprint](https://github.com/NALYD2400/Sprint)',
   '- **Config Storage**: `%APPDATA%\\sprint\\projects.json`',
   '- **Native Rust Engine**: Process manager with asynchronous stdout/stderr log streaming and real-time CPU/RAM telemetry polling (every 2s).',
   '- **Auto-Stop Child Processes on Exit**: On app exit or tray quit, Sprint terminates all spawned dev servers (taskkill /F /T) to prevent orphaned processes.',

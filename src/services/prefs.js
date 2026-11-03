@@ -30,7 +30,6 @@ export const DEFAULT_PREFS = {
   backgroundBlur: 30,
   backgroundSpeed: 100,
   sidebarCollapsed: false,
-  onboardingDismissed: false,
   favoriteProjectIds: [],
   dashboard: DEFAULT_DASHBOARD,
 };

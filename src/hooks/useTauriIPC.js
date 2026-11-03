@@ -149,10 +149,6 @@ export function useProjects() {
         const { invoke } = await import('@tauri-apps/api/core');
         const res = await invoke('get_projects_cmd');
         setProjects(res || []);
-      } else {
-        const res = await fetch('/api/projects');
-        const data = await res.json();
-        setProjects(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.warn('Failed to load projects:', e.message);
@@ -287,7 +283,6 @@ export function useProjects() {
 
   return {
     projects,
-    setProjects,
     saveProjects,
     reload: fetchProjects,
     loading,
@@ -299,11 +294,10 @@ export function useSystemMetrics() {
     cpu_usage: 0,
     ram_total_mb: 0,
     ram_used_mb: 0,
-    ram_usage_pct: 0,
-    disk_total_gb: 0,
-    disk_free_gb: 0,
-    disk_usage_pct: 0,
-    uptime_seconds: 0,
+    managed_cpu_pct: 0,
+    managed_ram_mb: 0,
+    active_servers_count: 0,
+    server_metrics: {},
   });
   const [history, setHistory] = useState([]);
 

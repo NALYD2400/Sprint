@@ -71,7 +71,6 @@ impl ProcessManager {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn start_server(
         &self,
         app: AppHandle,

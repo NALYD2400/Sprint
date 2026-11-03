@@ -1,6 +1,5 @@
 import { readStoredSetting } from './services/settingsStorage';
 import React, { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { triggerToast } from './services/toastBus';
 import ColorBendsBackground from './components/ui/ColorBendsBackground';
@@ -26,26 +25,11 @@ import ServerFormModal from './components/modals/ServerFormModal';
 import AutoUpdateModal from './components/modals/AutoUpdateModal';
 import ToastContainer from './components/ui/ToastContainer';
 import { useProjects, useSystemMetrics } from './hooks/useTauriIPC';
+import { GITHUB_REPO, isNewerVersion } from './services/updates';
 
 import pkg from '../package.json';
 
 const CURRENT_APP_VERSION = pkg.version;
-const GITHUB_REPO = 'NALYD2400/portly';
-
-function isNewerVersion(latest, current) {
-  if (!latest || !current) return false;
-  const cleanL = latest.replace(/^v/, '').trim();
-  const cleanC = current.replace(/^v/, '').trim();
-  const lParts = cleanL.split('.').map((p) => parseInt(p, 10) || 0);
-  const cParts = cleanC.split('.').map((p) => parseInt(p, 10) || 0);
-  for (let i = 0; i < Math.max(lParts.length, cParts.length); i++) {
-    const l = lParts[i] || 0;
-    const c = cParts[i] || 0;
-    if (l > c) return true;
-    if (l < c) return false;
-  }
-  return false;
-}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -56,10 +40,7 @@ export default function App() {
   const [envModalRoot, setEnvModalRoot] = useState(null);
   const [editProjectTarget, setEditProjectTarget] = useState(null);
   const [serverForm, setServerForm] = useState(null); // { mode: 'add'|'edit', project, server }
-  const [selectedTerminal, setSelectedTerminal] = useState({
-    id: null,
-    name: null,
-  });
+  const [selectedTerminalId, setSelectedTerminalId] = useState(null);
   const [browserTarget, setBrowserTarget] = useState({
     serverId: null,
     url: null,
@@ -86,7 +67,7 @@ export default function App() {
       const tab = typeof payload === 'string' ? payload : payload?.tab;
       if (['dashboard', 'projects', 'terminal', 'settings'].includes(tab)) {
         setIsPaletteOpen(false);
-        if (payload?.serverId) setSelectedTerminal({ id: payload.serverId, name: null });
+        if (payload?.serverId) setSelectedTerminalId(payload.serverId);
         setActiveTab(tab);
       }
     });
@@ -150,18 +131,10 @@ export default function App() {
     checkUpdateOnLaunch();
   }, []);
 
-  // Initialize custom Hex accent color & Register Global OS Shortcut at launch
+  // Le moteur natif enregistre déjà le raccourci global au démarrage.
   useEffect(() => {
     const savedHex = readStoredSetting('custom_hex');
     if (savedHex) applyAccent(savedHex);
-
-    const savedShortcut = readStoredSetting('global_shortcut') || 'Ctrl+Alt+P';
-    const shortcutTimer = setTimeout(() => {
-      invoke('register_global_shortcut_cmd', { shortcut: savedShortcut }).catch((e) => {
-        console.warn('Non-critical: Global shortcut registration fallback:', e);
-      });
-    }, 500);
-    return () => clearTimeout(shortcutTimer);
   }, []);
 
   // Raccourcis clavier globaux
@@ -243,8 +216,8 @@ export default function App() {
       ? 'Paramètres'
       : NAV_ITEMS.find((n) => n.id === activeTab)?.label || '';
 
-  const handleOpenTerminal = (serverId, serverName) => {
-    setSelectedTerminal({ id: serverId, name: serverName });
+  const handleOpenTerminal = (serverId) => {
+    setSelectedTerminalId(serverId);
     setActiveTab('terminal');
   };
 
@@ -368,7 +341,7 @@ export default function App() {
                 {activeTab === 'terminal' && (
                   <TerminalView
                     projects={projects}
-                    initialServerId={selectedTerminal.id}
+                    initialServerId={selectedTerminalId}
                     onSelectTab={setActiveTab}
                   />
                 )}
@@ -398,6 +371,7 @@ export default function App() {
 
       <CommandPaletteModal
         isOpen={isPaletteOpen}
+        backgroundPrefs={showCanvasBg ? prefs : null}
         onClose={() => setIsPaletteOpen(false)}
         projects={projects}
         onOpenTerminal={handleOpenTerminal}

@@ -19,13 +19,17 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--surface-1);
+  background: transparent;
 }
 .ports-table td {
   padding: 7px 10px;
   border-bottom: 1px solid var(--line);
   background: transparent;
   transition: background-color 0.15s ease-out;
+}
+/* Clip scrolled rows beneath the transparent sticky header. */
+.ports-table tbody {
+  clip-path: inset(var(--ports-scroll-offset, 0px) 0 0);
 }
 .ports-table tbody tr:is(:hover, :focus-within) td {
   background: var(--surface-3);

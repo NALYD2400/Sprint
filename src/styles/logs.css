@@ -37,10 +37,6 @@
 .logs-page {
   gap: 8px;
 }
-.logs-header,
-.logs-servers {
-  flex-shrink: 0;
-}
 .terminal-log-screen {
   min-height: 0;
 }

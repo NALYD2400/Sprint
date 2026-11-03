@@ -3744,7 +3744,7 @@ dependencies = [
 
 [[package]]
 name = "sprint"
-version = "0.5.10"
+version = "0.5.11"
 dependencies = [
  "dirs-next",
  "netstat2",

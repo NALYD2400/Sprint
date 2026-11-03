@@ -301,7 +301,7 @@ mod tests {
     fn rejects_malformed_checksum_lines() {
         assert_eq!(expected_sha256("abc  Sprint_setup.exe", "Sprint_setup.exe"), None);
         assert_eq!(expected_sha256(&format!("{}  Sprint_setup.exe", "g".repeat(64)), "Sprint_setup.exe"), None);
-        assert_eq!(expected_sha256(&format!("{HASH}"), "Sprint_setup.exe"), None);
+        assert_eq!(expected_sha256(HASH, "Sprint_setup.exe"), None);
     }
 
     #[test]

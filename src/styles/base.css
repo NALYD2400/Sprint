@@ -52,9 +52,15 @@ body {
   font-family: var(--font-sans);
   font-feature-settings: 'cv11', 'ss01';
   overflow: hidden;
-  user-select: text;
+  user-select: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+input,
+textarea,
+[contenteditable]:not([contenteditable='false']) {
+  user-select: text;
 }
 
 /* Insets remain inside the viewport when the CSS zoom fallback is active. */
@@ -248,12 +254,6 @@ select:focus {
   width: 100%;
 }
 
-/* Panneau plat : plus de flou ni de verre, hiérarchie par la bordure */
-.glass-panel {
-  background: var(--surface-1);
-  border: 1px solid var(--line);
-}
-
 .glass-card {
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -264,20 +264,6 @@ select:focus {
 .glass-card:hover {
   border-color: var(--line-strong);
   background: var(--surface-3);
-}
-
-/* ---------- Hover thématiques ---------- */
-.hover-accent:hover {
-  color: var(--accent-color);
-}
-.hover-accent-bg:hover {
-  background-color: rgba(var(--accent-color-rgb), 0.14);
-}
-.hover-accent-border:hover {
-  border-color: rgba(var(--accent-color-rgb), 0.45);
-}
-.group:hover .group-hover-accent {
-  color: var(--accent-color);
 }
 
 /* ---------- Classes d'accent dynamique ---------- */
@@ -338,32 +324,10 @@ select:focus {
 }
 
 /* ---------- Primitives de l'interface ---------- */
-.eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-lo);
-}
-
 .stat-value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-}
-
-.meter {
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  overflow: hidden;
-}
-.meter > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent-color);
-  transition: width 0.5s ease;
 }
 
 /* ---------- Mouvement réduit (réglage utilisateur ou système) ---------- */
@@ -446,7 +410,6 @@ select:focus {
 :root[data-theme='light'] .modal-panel {
   box-shadow: 0 24px 64px -12px rgba(20, 20, 40, 0.28);
 }
-:root[data-theme='light'] .glass-panel,
 :root[data-theme='light'] .glass-card {
   box-shadow: 0 1px 2px rgba(20, 20, 40, 0.05);
 }
@@ -457,14 +420,6 @@ select:focus {
 :root[data-theme='light'] * {
   scrollbar-color: rgba(20, 20, 40, 0.25) transparent;
 }
-:root[data-theme='light'] .meter {
-  background: rgba(20, 20, 40, 0.09);
-}
-/* Les zones qui affichent du contenu tiers (aperçu web) gardent toujours un fond blanc. */
-:root[data-theme='light'] .keep-white {
-  background: #fff;
-}
-
 /* ---------- Nouvelles primitives ---------- */
 @layer components {
   .page {
@@ -514,26 +469,6 @@ select:focus {
   :root[data-theme='light'] .btn:hover {
     background: #f0f0f4;
   }
-  .btn-lg {
-    height: 44px;
-    padding: 0 20px;
-    font-size: 14px;
-    border-radius: 12px;
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 22px;
-    padding: 0 8px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 500;
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--color-zinc-300);
-  }
-
   kbd.key {
     display: inline-flex;
     align-items: center;
@@ -568,7 +503,7 @@ select:focus {
   }
 }
 
-/* Le texte du contenu reste sélectionnable (chemins, logs, URL) ; seule l'interface de navigation ne l'est pas. */
+/* Les contrôles restent non sélectionnables, y compris dans les zones de logs. */
 aside,
 nav,
 header[data-tauri-drag-region],

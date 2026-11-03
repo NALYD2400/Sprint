@@ -228,6 +228,66 @@ fn validate_projects(projects: &[ProjectConfig]) -> Result<(), String> {
     Ok(())
 }
 
+pub fn get_shortcut_file() -> PathBuf {
+    get_config_dir().join("shortcut.txt")
+}
+
+pub fn load_saved_shortcut() -> String {
+    let file = get_shortcut_file();
+    if file.exists() {
+        if let Ok(content) = fs::read_to_string(&file) {
+            let trimmed = content.trim();
+            if !trimmed.is_empty() {
+                return trimmed.to_string();
+            }
+        }
+    }
+    "Ctrl+Alt+P".to_string()
+}
+
+pub fn save_saved_shortcut(shortcut: &str) -> Result<(), String> {
+    atomic_write(&get_shortcut_file(), shortcut)
+}
+
+pub fn load_settings() -> AppSettings {
+    let file = get_settings_file();
+    if file.exists() {
+        if let Ok(content) = fs::read_to_string(&file) {
+            if let Ok(settings) = serde_json::from_str::<AppSettings>(&content) {
+                return settings;
+            }
+        }
+    }
+    AppSettings {
+        global_shortcut: load_saved_shortcut(),
+        ..AppSettings::default()
+    }
+}
+
+pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    atomic_write(&get_settings_file(), &json)
+}
+
+pub fn list_env_files_in_dir(project_root: &Path) -> Vec<String> {
+    let mut list = Vec::new();
+    if let Ok(entries) = fs::read_dir(project_root) {
+        for entry in entries.flatten() {
+            if let Ok(file_name) = entry.file_name().into_string() {
+                if file_name == ".env" || file_name.starts_with(".env.") {
+                    list.push(file_name);
+                }
+            }
+        }
+    }
+    if list.is_empty() {
+        list.push(".env".to_string());
+    } else {
+        list.sort();
+    }
+    list
+}
+
 #[cfg(test)]
 mod validation_tests {
     use super::*;
@@ -239,7 +299,7 @@ mod validation_tests {
     #[test]
     fn imports_reject_duplicate_project_and_server_ids() {
         let first = project();
-        assert!(validate_projects(&[first.clone()]).is_ok());
+        assert!(validate_projects(std::slice::from_ref(&first)).is_ok());
         assert!(validate_projects(&[first.clone(), first.clone()]).is_err());
         let mut second = first.clone();
         second.id = "other-project".to_string();
@@ -311,77 +371,4 @@ mod validation_tests {
         assert!(!with_suffix(&file, "tmp").exists());
         fs::remove_dir_all(&dir).unwrap();
     }
-}
-
-pub fn get_shortcut_file() -> PathBuf {
-    get_config_dir().join("shortcut.txt")
-}
-
-pub fn load_saved_shortcut() -> String {
-    let file = get_shortcut_file();
-    if file.exists() {
-        if let Ok(content) = fs::read_to_string(&file) {
-            let trimmed = content.trim();
-            if !trimmed.is_empty() {
-                return trimmed.to_string();
-            }
-        }
-    }
-    "Ctrl+Alt+P".to_string()
-}
-
-pub fn save_saved_shortcut(shortcut: &str) -> Result<(), String> {
-    atomic_write(&get_shortcut_file(), shortcut)
-}
-
-pub fn load_settings() -> AppSettings {
-    let file = get_settings_file();
-    if file.exists() {
-        if let Ok(content) = fs::read_to_string(&file) {
-            if let Ok(settings) = serde_json::from_str::<AppSettings>(&content) {
-                return settings;
-            }
-        }
-    }
-    let legacy_shortcut = load_saved_shortcut();
-    AppSettings {
-        custom_hex: default_hex(),
-        canvas_bg: true,
-        auto_restart: false,
-        hide_stopped_servers: true,
-        clean_ansi_logs: true,
-        minimize_to_tray: true,
-        notif_windows: true,
-        notif_app: true,
-        global_shortcut: if !legacy_shortcut.is_empty() {
-            legacy_shortcut
-        } else {
-            default_shortcut()
-        },
-        autostart: false,
-    }
-}
-
-pub fn save_settings(settings: &AppSettings) -> Result<(), String> {
-    let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
-    atomic_write(&get_settings_file(), &json)
-}
-
-pub fn list_env_files_in_dir(project_root: &Path) -> Vec<String> {
-    let mut list = Vec::new();
-    if let Ok(entries) = fs::read_dir(project_root) {
-        for entry in entries.flatten() {
-            if let Ok(file_name) = entry.file_name().into_string() {
-                if file_name == ".env" || file_name.starts_with(".env.") {
-                    list.push(file_name);
-                }
-            }
-        }
-    }
-    if list.is_empty() {
-        list.push(".env".to_string());
-    } else {
-        list.sort();
-    }
-    list
 }

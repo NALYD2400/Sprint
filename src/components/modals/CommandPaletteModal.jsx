@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import Modal from '../ui/Modal';
+import ColorBendsBackground from '../ui/ColorBendsBackground';
 import { triggerToast } from '../../services/toastBus';
 import { performServerAction } from '../../services/serverActions';
 import useServerOperations from '../../hooks/useServerOperations';
@@ -38,6 +39,7 @@ const normalize = (text) =>
 
 export default function CommandPaletteModal({
   isOpen,
+  backgroundPrefs = null,
   onClose,
   projects = [],
   onOpenTerminal,
@@ -215,6 +217,12 @@ export default function CommandPaletteModal({
       panelClassName="command-palette-panel"
       backdropClassName="command-palette-backdrop"
     >
+      {backgroundPrefs?.backgroundIntensity > 0 && (
+        <div className="app-background" aria-hidden="true"
+          style={{ opacity: backgroundPrefs.backgroundIntensity / 100 }}>
+          <ColorBendsBackground blur={backgroundPrefs.backgroundBlur} speed={backgroundPrefs.backgroundSpeed} />
+        </div>
+      )}
       <div className="command-palette" onKeyDown={handleKeyDown}>
         <h2 id={titleId} className="sr-only">
           Rechercher dans Sprint

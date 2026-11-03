@@ -1,6 +1,4 @@
-import { SKILL_MARKDOWN } from '../../services/assistantSkill';
 import AboutSettings from '../settings/AboutSettings';
-import AssistantSettings from '../settings/AssistantSettings';
 import StorageSettings from '../settings/StorageSettings';
 import SystemSettings from '../settings/SystemSettings';
 import SupervisionSettings from '../settings/SupervisionSettings';
@@ -15,7 +13,7 @@ import { DEFAULT_DASHBOARD, dashboardPrefs } from '../../services/dashboardPrefs
 import { triggerToast } from '../../services/toastBus';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import { applyAccent } from '../../services/accent';
-import { syncStoredSettings, loadStoredSettings, writeStoredSetting } from '../../services/settingsStorage';
+import { DEFAULT_SETTINGS, syncStoredSettings, loadStoredSettings, writeStoredSetting } from '../../services/settingsStorage';
 
 function isValidHex(hex) {
   return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex);
@@ -37,7 +35,6 @@ export default function SettingsView({
   const [hexDraft, setHexDraft] = useState(settings.custom_hex);
   const [hexError, setHexError] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [copiedSkill, setCopiedSkill] = useState(false);
   const [configDirPath, setConfigDirPath] = useState('%APPDATA%/sprint');
   const [confirmReset, setConfirmReset] = useState(false);
   const [pendingImport, setPendingImport] = useState(null);
@@ -46,7 +43,6 @@ export default function SettingsView({
   const saveSequence = useRef(0);
 
   const savedTimerRef = useRef(null);
-  const copiedTimerRef = useRef(null);
 
   // Load unified settings from Rust backend at launch
   useEffect(() => {
@@ -73,7 +69,6 @@ export default function SettingsView({
   useEffect(
     () => () => {
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
     },
     [],
   );
@@ -248,46 +243,8 @@ export default function SettingsView({
     }
   };
 
-  const handleDownloadSkill = () => {
-    const blob = new Blob([SKILL_MARKDOWN], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'SKILL.md';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleCopySkill = async () => {
-    try { await navigator.clipboard.writeText(SKILL_MARKDOWN); }
-    catch (reason) {
-      triggerToast({ title: 'Copie impossible', message: String(reason), type: 'error' });
-      return;
-    }
-    setCopiedSkill(true);
-    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-    copiedTimerRef.current = setTimeout(() => setCopiedSkill(false), 2000);
-    triggerToast({
-      title: '📋 Skill IA Copié !',
-      message: 'Collez ce contenu dans votre workspace IA.',
-      type: 'success',
-      duration: 2000,
-    });
-  };
-
   const executeResetDefaults = async () => {
-    const def = {
-      custom_hex: '#a855f7',
-      canvas_bg: true,
-      auto_restart: false,
-      hide_stopped_servers: true,
-      clean_ansi_logs: true,
-      minimize_to_tray: true,
-      notif_windows: true,
-      notif_app: true,
-      global_shortcut: 'Ctrl+Alt+P',
-      autostart: false,
-    };
+    const def = { ...DEFAULT_SETTINGS };
     try {
       await invoke('register_global_shortcut_cmd', {
         shortcut: def.global_shortcut,
@@ -304,8 +261,8 @@ export default function SettingsView({
     }
     onPrefsChange({ ...DEFAULT_PREFS, dashboard: { ...DEFAULT_DASHBOARD } });
     setSettings(def);
-    setHexDraft('#a855f7');
-    applyAccent('#a855f7');
+    setHexDraft(def.custom_hex);
+    applyAccent(def.custom_hex);
     syncStoredSettings(def);
     showAutoSaved();
     setConfirmReset(false);
@@ -338,8 +295,7 @@ export default function SettingsView({
     ['supervision', 'Serveurs & logs', 'Comportement des serveurs et du journal.'],
     ['system', 'Système', 'Raccourcis, démarrage et notifications.'],
     ['storage', 'Sauvegardes', 'Exportez ou restaurez vos projets.'],
-    ['ai-skill', 'Assistants IA', 'Configurez Sprint avec votre assistant.'],
-    ['about', 'À propos', 'Version et mises à jour.'],
+    ['about', 'À propos', 'Version, mises à jour et outils pour les assistants IA.'],
   ];
 
   return (
@@ -374,16 +330,15 @@ export default function SettingsView({
             <h2>{categories.find(([id]) => id === activeTab)?.[1]}</h2>
             <p>{categories.find(([id]) => id === activeTab)?.[2]}</p>
           </div>
-          <div className="settings-save-status" role="status">
+          {(saveState || !['storage', 'about'].includes(activeTab)) && <div className="settings-save-status" role="status">
             {saveState === 'saving' ? 'Enregistrement…' : saveState === 'error' ? 'Modifications non enregistrées' : savedSuccess ? 'Enregistré' : 'Enregistrement automatique'}
             {saveState === 'error' && <button className="quiet-button" onClick={() => saveUpdatedSettings(settings)}>Réessayer</button>}
-          </div>
+          </div>}
           {activeTab === 'appearance' && <AppearanceSettings prefs={prefs} onPrefsChange={onPrefsChange} showAutoSaved={showAutoSaved} settings={settings} hexDraft={hexDraft} setHexDraft={setHexDraft} hexError={hexError} setHexError={setHexError} commitHexColor={commitHexColor} toggleSetting={toggleSetting} />}
           {activeTab === 'dashboard' && <DashboardSettings config={config} changeDashboard={changeDashboard} moveBlock={moveBlock} />}
           {activeTab === 'supervision' && <SupervisionSettings settings={settings} toggleSetting={toggleSetting} />}
           {activeTab === 'system' && <SystemSettings settings={settings} handleUpdateShortcut={handleUpdateShortcut} toggleAutoStart={toggleAutoStart} toggleSetting={toggleSetting} />}
           {activeTab === 'storage' && <StorageSettings projects={projects} configDirPath={configDirPath} handleOpenConfigDir={handleOpenConfigDir} handleExportConfig={handleExportConfig} handleImportConfig={handleImportConfig} />}
-          {activeTab === 'ai-skill' && <AssistantSettings copiedSkill={copiedSkill} handleCopySkill={handleCopySkill} handleDownloadSkill={handleDownloadSkill} />}
           {activeTab === 'about' && <AboutSettings onOpenUpdateModal={onOpenUpdateModal} />}
         </div>
       </div>

@@ -6,8 +6,10 @@
   background: rgba(23, 23, 26, 0.22);
 }
 .command-palette-panel {
+  position: relative;
+  isolation: isolate;
   border-radius: 10px;
-  background: var(--surface-2);
+  background: var(--bg-base);
   box-shadow: none !important;
 }
 .palette-search {
@@ -287,7 +289,6 @@
   font-variant-numeric: tabular-nums;
 }
 @container (max-width: 520px) {
-  .terminal-server-control,
   .terminal-actions {
     width: 100%;
   }

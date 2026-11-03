@@ -44,7 +44,7 @@ export default function ToastContainer() {
         }
       }
 
-      if (duration > 0) {
+      if (isAppEnabled && duration > 0) {
         clearTimeout(timers.current.get(toastId));
         timers.current.set(toastId, setTimeout(() => {
           timers.current.delete(toastId);

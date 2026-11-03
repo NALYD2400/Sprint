@@ -86,13 +86,6 @@ export async function stopProject(project, { silent = false } = {}) {
   return failures === 0;
 }
 
-export async function stopAll(projects) {
-  let complete = true;
-  for (const p of projects) { if (!await stopProject(p, { silent: true })) complete = false; }
-  if (complete) triggerToast({ title: 'Tout est arrêté', message: 'Vos serveurs Sprint ont été arrêtés.', type: 'info' });
-  return complete;
-}
-
 export function openUrl(url) {
   return invoke('open_browser', { url }).catch((e) =>
     triggerToast({ title: "Impossible d'ouvrir le navigateur", message: String(e), type: 'error' })

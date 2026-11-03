@@ -11,6 +11,19 @@ const KEYS = {
   global_shortcut: 'cfg_shortcut',
 };
 
+export const DEFAULT_SETTINGS = {
+  custom_hex: '#a855f7',
+  canvas_bg: true,
+  auto_restart: false,
+  hide_stopped_servers: true,
+  clean_ansi_logs: true,
+  minimize_to_tray: true,
+  notif_windows: true,
+  notif_app: true,
+  global_shortcut: 'Ctrl+Alt+P',
+  autostart: false,
+};
+
 export function readStoredSetting(field, fallback = null) {
   const suffix = KEYS[field];
   if (!suffix) throw new Error('Réglage inconnu : ' + field);
@@ -24,18 +37,17 @@ export function writeStoredSetting(field, value) {
 }
 
 export function loadStoredSettings() {
-  return {
-    custom_hex: readStoredSetting('custom_hex', '#a855f7'),
-    canvas_bg: readStoredSetting('canvas_bg') !== 'false',
-    auto_restart: readStoredSetting('auto_restart') === 'true',
-    hide_stopped_servers: readStoredSetting('hide_stopped_servers') !== 'false',
-    clean_ansi_logs: readStoredSetting('clean_ansi_logs') !== 'false',
-    minimize_to_tray: readStoredSetting('minimize_to_tray') !== 'false',
-    notif_windows: readStoredSetting('notif_windows') !== 'false',
-    notif_app: readStoredSetting('notif_app') !== 'false',
-    global_shortcut: readStoredSetting('global_shortcut', 'Ctrl+Alt+P'),
-    autostart: false,
-  };
+  const settings = { ...DEFAULT_SETTINGS };
+  for (const field of Object.keys(KEYS)) {
+    const fallback = DEFAULT_SETTINGS[field];
+    const value = readStoredSetting(field, String(fallback));
+    if (typeof fallback === 'boolean') {
+      settings[field] = fallback ? value !== 'false' : value === 'true';
+    } else {
+      settings[field] = value;
+    }
+  }
+  return settings;
 }
 
 export function syncStoredSettings(settings) {

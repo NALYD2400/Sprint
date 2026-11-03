@@ -54,8 +54,9 @@ Les tests UI utilisent Playwright avec les mocks IPC officiels de Tauri : ils n�
 
 Voir [la revue UI/UX et les corrections](docs/ux-review-2026-10-07.md).
 Voir aussi [les améliorations et le nettoyage du code](docs/improvements-2026-10-07.md).
+Le [tri des fonctionnalités, paramètres et code du 3 novembre](docs/cleanup-2026-11-03.md) détaille les éléments conservés, regroupés et supprimés.
 
-La version 0.5.10 rétablit le fond continu de toute la fenêtre et conserve les favoris, filtres et actions Ctrl+K. Voir [les notes de version](docs/releases/v0.5.10.md).
+La version 0.5.11 harmonise les fonds des Ports et de Ctrl+K, simplifie les paramètres et nettoie le code. Voir [les notes de version](docs/releases/v0.5.11.md).
 
 ## Structure
 

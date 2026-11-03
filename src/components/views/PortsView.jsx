@@ -276,7 +276,10 @@ export default function PortsView({ projects = [] }) {
           )}
         </div>
       ) : (
-        <div className="ports-table-scroll">
+        <div className="ports-table-scroll" onScroll={(event) => {
+          const container = event.currentTarget;
+          container.style.setProperty('--ports-scroll-offset', `${container.scrollTop}px`);
+        }}>
           <table className="ports-table">
             <thead>
               <tr>

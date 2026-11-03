@@ -3,23 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { DownloadCloud, RefreshCw, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import Modal from '../ui/Modal';
-
-const GITHUB_REPO = 'NALYD2400/portly';
-
-function isNewerVersion(latest, current) {
-  if (!latest || !current) return false;
-  const cleanL = latest.replace(/^v/, '').trim();
-  const cleanC = current.replace(/^v/, '').trim();
-  const lParts = cleanL.split('.').map((p) => parseInt(p, 10) || 0);
-  const cParts = cleanC.split('.').map((p) => parseInt(p, 10) || 0);
-  for (let i = 0; i < Math.max(lParts.length, cParts.length); i++) {
-    const l = lParts[i] || 0;
-    const c = cParts[i] || 0;
-    if (l > c) return true;
-    if (l < c) return false;
-  }
-  return false;
-}
+import { GITHUB_REPO, isNewerVersion } from '../../services/updates';
 
 export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
   const [status, setStatus] = useState('checking'); // checking | available | downloading | installing | completed | upToDate | error

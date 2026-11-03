@@ -50,17 +50,6 @@ async fn exit_app(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn relaunch_app_cmd(app: AppHandle) -> Result<(), String> {
-    let app_handle = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        shutdown_all_managed_processes(&app_handle);
-    })
-    .await
-    .map_err(|e| e.to_string())?;
-    app.restart();
-}
-
-#[tauri::command]
 async fn get_projects_cmd(app: AppHandle) -> Result<Vec<ProjectConfig>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let mut projects = load_projects();
@@ -184,7 +173,6 @@ pub fn run() {
             tray_menu::get_tray_state_cmd,
             tray_menu::tray_action_cmd,
             exit_app,
-            relaunch_app_cmd,
             get_projects_cmd,
             save_projects_cmd,
             get_settings_cmd,
