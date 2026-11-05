@@ -119,6 +119,10 @@ async fn stop_server_cmd(app: AppHandle, server_id: String) -> Result<(), String
     .map_err(|e| e.to_string())?
 }
 
+fn app_context() -> tauri::Context<tauri::Wry> {
+    tauri::generate_context!()
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -199,6 +203,36 @@ pub fn run() {
             updater::download_update_cmd,
             updater::install_update_and_relaunch_cmd,
         ])
-        .run(tauri::generate_context!())
+        .run(app_context())
         .expect("error while running tauri application");
+}
+
+#[cfg(all(test, feature = "custom-protocol"))]
+mod embedded_frontend_tests {
+    #[test]
+    fn production_frontend_is_embedded() {
+        let context = super::app_context();
+        let assets = context.assets();
+        let keys: Vec<_> = assets.iter().map(|(key, _)| key.into_owned()).collect();
+        let index = assets
+            .get(&"/index.html".into())
+            .unwrap_or_else(|| panic!("index.html absent des ressources intégrées : {keys:?}"));
+        let html = std::str::from_utf8(&index).expect("index.html doit être en UTF-8");
+        assert!(
+            html.contains("id=\"root\""),
+            "point de montage React absent"
+        );
+        for key in &keys {
+            assert!(key.starts_with('/'), "chemin de ressource invalide : {key}");
+            assert!(
+                assets.get(&key.as_str().into()).is_some(),
+                "ressource illisible : {key}"
+            );
+        }
+        assert!(
+            keys.iter().any(|key| key.ends_with(".js")),
+            "JavaScript absent"
+        );
+        assert!(keys.iter().any(|key| key.ends_with(".css")), "CSS absent");
+    }
 }

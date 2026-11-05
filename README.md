@@ -39,6 +39,8 @@ npm run tauri dev    # lance l'app en mode développement
 npm run tauri build  # produit l'installateur NSIS (dist/ + src-tauri/target)
 ```
 
+Le build desktop compile l’interface puis teste la lecture des ressources réellement intégrées au contexte Tauri de production avant de créer l’installateur. Un cache compressé illisible bloque le build. Ce contrôle peut aussi être lancé avec `npm run test:embedded` après `npm run build`.
+
 ## Vérifications
 
 ```bash
@@ -56,7 +58,7 @@ Voir [la revue UI/UX et les corrections](docs/ux-review-2026-10-07.md).
 Voir aussi [les améliorations et le nettoyage du code](docs/improvements-2026-10-07.md).
 Le [tri des fonctionnalités, paramètres et code du 3 novembre](docs/cleanup-2026-11-03.md) détaille les éléments conservés, regroupés et supprimés.
 
-La version 0.5.11 harmonise les fonds des Ports et de Ctrl+K, simplifie les paramètres et nettoie le code. Voir [les notes de version](docs/releases/v0.5.11.md).
+La version 0.5.12 corrige l’écran noir au démarrage et ajoute un contrôle des ressources intégrées avant la création de l’installateur. Voir [les notes de version](docs/releases/v0.5.12.md).
 
 ## Structure
 
