@@ -55,5 +55,5 @@ export function syncStoredSettings(settings) {
     if (settings[field] === undefined) continue;
     writeStoredSetting(field, settings[field]);
   }
-  window.dispatchEvent(new Event('portly_canvas_toggle'));
+  window.dispatchEvent(new Event('sprint_canvas_toggle'));
 }

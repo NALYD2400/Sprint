@@ -199,10 +199,10 @@ export default function App() {
       setShowCanvasBg(readStoredSetting('canvas_bg') !== 'false');
     };
     window.addEventListener('storage', handleCanvasToggle);
-    window.addEventListener('portly_canvas_toggle', handleCanvasToggle);
+    window.addEventListener('sprint_canvas_toggle', handleCanvasToggle);
     return () => {
       window.removeEventListener('storage', handleCanvasToggle);
-      window.removeEventListener('portly_canvas_toggle', handleCanvasToggle);
+      window.removeEventListener('sprint_canvas_toggle', handleCanvasToggle);
     };
   }, []);
 

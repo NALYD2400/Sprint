@@ -54,10 +54,10 @@ export default function ToastContainer() {
       }
     };
 
-    window.addEventListener('portly-toast', handleAddToast);
+    window.addEventListener('sprint-toast', handleAddToast);
     const activeTimers = timers.current;
     return () => {
-      window.removeEventListener('portly-toast', handleAddToast);
+      window.removeEventListener('sprint-toast', handleAddToast);
       activeTimers.forEach(clearTimeout);
       activeTimers.clear();
     };

@@ -55,7 +55,7 @@ window.__ports = [
   { port: 6463, pid: 2222, process_name: 'Discord', protocol: 'TCP', local_address: '[::1]:6463' },
   ...Array.from({length: 30}, (_, i) => ({port: 7000 + i, pid: 4000 + i, process_name: 'Application ' + i, protocol: 'TCP', local_address: '[192.168.1.5]:' + (7000 + i)}))
 ];
-window.addEventListener('portly-toast', event => window.__toasts.push(event.detail));
+window.addEventListener('sprint-toast', event => window.__toasts.push(event.detail));
 mockIPC((cmd, args) => {
   window.__layoutCommands.push(cmd); window.__commands.push({cmd,args}); if (cmd === "save_projects_cmd" && window.__failSave) throw new Error("Test: disque indisponible"); if (cmd === "get_tray_state_cmd") return {projects: [{"id":"p1","name":"SR Editer","servers":[{"id":"s1","name":"Application desktop","port":4313,"state":"running"},{"id":"s2","name":"Site web local","port":3000,"state":"stopped"}]},{"id":"p2","name":"SiteStudio","servers":[{"id":"s3","name":"Web Dev Server","port":5173,"state":"running"},{"id":"s4","name":"Tauri Desktop","port":0,"state":"stopped"}]}],running_count:2,activity:window.__trayActivity};
   if (cmd === 'get_projects_cmd') return ${JSON.stringify(projects)};
