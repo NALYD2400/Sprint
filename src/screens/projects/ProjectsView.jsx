@@ -1,3 +1,4 @@
+import ProjectAvatar from '../../components/ui/ProjectAvatar';
 import SprintNavIcon from '../../components/layout/SprintNavIcon';
 import React, { useState, useEffect } from 'react';
 import FloatingMenu from '../../components/ui/FloatingMenu';
@@ -108,6 +109,7 @@ export default function ProjectsView({
   onAddServer,
   favoriteProjectIds = [],
   onToggleFavorite,
+  projectIcons = {},
 }) {
   const [collapsedProjects, setCollapsedProjects] = useState(() => {
     try {
@@ -119,6 +121,7 @@ export default function ProjectsView({
   });
   const [tunnels, setTunnels] = useState([]);
   const [search, setSearch] = useState('');
+  const [projectFilter, setProjectFilter] = useState('all');
 
   const refreshTunnels = async () => {
     try {
@@ -310,7 +313,17 @@ export default function ProjectsView({
       })
     : projects;
   const favorites = new Set(favoriteProjectIds);
-  const filteredProjects = [...matchingProjects].sort(
+  const projectActive = project => (project.servers || []).some(server => ['running', 'starting'].includes(server.state));
+  const projectError = project => (project.servers || []).some(server => server.state === 'error' || server.lastExitReason);
+  const projectFilters = [
+    ['all', 'Tous', projects.length],
+    ['favorites', 'Favoris', projects.filter(project => favorites.has(project.id)).length],
+    ['active', 'Actifs', projects.filter(projectActive).length],
+    ['errors', 'À vérifier', projects.filter(projectError).length],
+  ];
+  const scopedProjects = matchingProjects.filter(project => projectFilter === 'all' ||
+    (projectFilter === 'favorites' ? favorites.has(project.id) : projectFilter === 'active' ? projectActive(project) : projectError(project)));
+  const filteredProjects = [...scopedProjects].sort(
     (a, b) => Number(favorites.has(b.id)) - Number(favorites.has(a.id)),
   );
 
@@ -322,7 +335,7 @@ export default function ProjectsView({
   return (
     <div className="projects-page select-none pb-12 max-w-4xl mx-auto">
       {/* En-tête */}
-      <div className="page-header flex flex-wrap items-end justify-between gap-4 mb-6">
+      <div className="page-header flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="page-header-intro">
           <span className="page-header-icon" aria-hidden="true"><SprintNavIcon name="projects" active /></span>
           <div>
@@ -337,29 +350,6 @@ export default function ProjectsView({
         </div>
 
         <div className="project-tools flex flex-wrap items-center gap-2 min-w-0">
-          {projects.length > 0 && (
-            <>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5 pointer-events-none" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Filtrer"
-                  className="project-filter pl-8 pr-3 h-8 rounded-md bg-transparent hover:bg-white/[0.04] border border-transparent text-xs text-white placeholder-zinc-600 focus:bg-white/[0.04] w-36"
-                />
-              </div>
-              <button
-                onClick={handleToggleAll}
-                className="quiet-button h-9"
-                title="Déplier ou replier tous les projets"
-                aria-expanded={!projects.every((p) => collapsedProjects[p.id])}
-              >
-                <ChevronDown size={14} className={projects.every((p) => collapsedProjects[p.id]) ? '' : 'rotate-180'} />
-                {projects.every((p) => collapsedProjects[p.id]) ? 'Tout déplier' : 'Tout replier'}
-              </button>
-            </>
-          )}
           <button
             onClick={onAddProject}
             className="btn"
@@ -369,6 +359,19 @@ export default function ProjectsView({
           </button>
         </div>
       </div>
+
+      {projects.length > 0 && <div className="projects-toolbar workspace-toolbar">
+        <div className="server-filters" role="group" aria-label="Filtrer les projets">
+          {projectFilters.map(([id, label, count]) => <button type="button" key={id} aria-pressed={projectFilter === id} onClick={() => setProjectFilter(id)}>{id === 'favorites' && <Pin size={12} aria-hidden="true" />}{label}<span>{count}</span></button>)}
+        </div>
+        <div className="projects-toolbar-end">
+          <label className="workspace-search"><Search size={14} aria-hidden="true" /><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Nom, commande, port…" aria-label="Filtrer les projets" /></label>
+          <button type="button" className="quiet-button" onClick={handleToggleAll} title="Déplier ou replier tous les projets" aria-expanded={!projects.every(project => collapsedProjects[project.id])}>
+            <ChevronDown size={14} className={projects.every(project => collapsedProjects[project.id]) ? '' : 'rotate-180'} />
+            {projects.every(project => collapsedProjects[project.id]) ? 'Tout déplier' : 'Tout replier'}
+          </button>
+        </div>
+      </div>}
 
       {projects.length === 0 ? (
         <div className="py-20 text-center space-y-4">
@@ -389,24 +392,24 @@ export default function ProjectsView({
       ) : filteredProjects.length === 0 ? (
         <div className="py-20 text-center">
           <Search className="w-7 h-7 text-zinc-600 mx-auto mb-3" />
-          <p className="text-sm text-zinc-300">Aucun résultat pour « {search} »</p>
+          <p className="text-sm text-zinc-300">{search ? `Aucun résultat pour « ${search} »` : projectFilter === 'favorites' ? 'Épinglez un projet pour le retrouver ici.' : projectFilter === 'active' ? 'Aucun projet actif.' : 'Aucun projet à vérifier.'}</p>
+          <button className="quiet-button mt-3" onClick={() => { setProjectFilter('all'); setSearch(''); }}>Afficher tous les projets</button>
         </div>
       ) : (
-        <div className="space-y-7">
+        <div className="projects-list">
           {filteredProjects.map((project) => {
             const isCollapsed = !!collapsedProjects[project.id];
             const servers = project.servers || [];
             const activeServersCount = servers.filter((s) => s.state === 'running').length;
-            const projColor = project.color || 'var(--accent-color)';
             const isProjectMenuOpen = openMenu?.type === 'project' && openMenu.id === project.id;
             const hasActiveMenu =
               isProjectMenuOpen || (openMenu?.type === 'server' && servers.some((s) => s.id === openMenu?.id));
             const meta = [project.framework, project.branch].filter(Boolean).join(' · ');
 
             return (
-              <section key={project.id} data-project-id={project.id} className={hasActiveMenu ? 'relative z-30' : ''}>
+              <section key={project.id} data-project-id={project.id} className={`project-section ${hasActiveMenu ? 'relative z-30' : ''}`}>
                 {/* Titre de projet */}
-                <div className="group/head flex items-center justify-between gap-3 h-9">
+                <div className="group/head project-section-header flex items-center justify-between gap-3">
                   <button
                     onClick={() => toggleProjectCollapse(project.id)}
                     className="flex items-center gap-2.5 min-w-0 min-h-6 cursor-pointer text-left"
@@ -415,9 +418,10 @@ export default function ProjectsView({
                     <ChevronDown
                       className={`w-3.5 h-3.5 text-zinc-600 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                     />
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: projColor }} />
+                    <ProjectAvatar project={project} image={projectIcons[project.id]} />
                     <span className="text-sm font-medium text-white truncate">{project.name}</span>
-                    {meta && <span className="text-xs text-zinc-600 truncate">{meta}</span>}
+                    {meta && <span className="project-meta text-xs text-zinc-600 truncate" title={meta}>{meta}</span>}
+                    <span className="project-server-count">{servers.length} serveur{servers.length > 1 ? 's' : ''}</span>
                     {isCollapsed && activeServersCount > 0 && (
                       <span className="text-xs text-emerald-400">{activeServersCount} en cours</span>
                     )}
@@ -447,7 +451,7 @@ export default function ProjectsView({
                         <button
                           disabled={servers.some((server) => getOperation(server.id))}
                           onClick={() => handleStartProjectServers(project)}
-                          className="h-7 px-2 rounded-md text-xs text-zinc-400 hover:text-emerald-300 hover:bg-emerald-500/10 opacity-0 group-hover/head:opacity-100 focus:opacity-100 transition-all cursor-pointer"
+                          className="h-7 px-2 rounded-md text-xs text-zinc-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors cursor-pointer"
                         >
                           Tout lancer
                         </button>
@@ -466,7 +470,7 @@ export default function ProjectsView({
                         className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
                           isProjectMenuOpen
                             ? 'bg-white/[0.08] text-white'
-                            : 'text-zinc-500 hover:text-white hover:bg-white/[0.05] opacity-0 group-hover/head:opacity-100'
+                            : 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
                         }`}
                         title="Options du projet"
                         aria-label="Options du projet"
@@ -558,7 +562,7 @@ export default function ProjectsView({
 
                 {/* Serveurs : simples lignes sous un filet fin */}
                 {!isCollapsed && (
-                  <div className="mt-1 ml-[7px] pl-5 border-l border-[var(--line)]">
+                  <div className="project-server-list">
                     {servers.map((srv) => {
                       const isRunning = srv.state === 'running';
                       const isServerMenuOpen = openMenu?.type === 'server' && openMenu.id === srv.id;
@@ -572,11 +576,10 @@ export default function ProjectsView({
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                isRunning ? 'bg-emerald-400 live-dot' : 'bg-zinc-700'
-                              }`}
-                            />
+                            <span className="server-project-avatar">
+                              <ProjectAvatar project={project} image={projectIcons[project.id]} small />
+                              <span className={`server-avatar-status ${isRunning ? 'is-running' : ''}`} />
+                            </span>
                             <div className="min-w-0">
                               <span className="text-[13px] text-zinc-100 truncate block">{srv.name}</span>
                               {srv.lastExitReason && <button className="server-exit-note" title={srv.lastExitReason}
@@ -585,7 +588,7 @@ export default function ProjectsView({
                               </button>}
                             </div>
                             <span
-                              className="text-xs font-mono text-zinc-600 truncate hidden md:block"
+                              className="project-server-command text-xs font-mono text-zinc-600 truncate hidden xl:block"
                               title={srv.command}
                             >
                               {srv.command}

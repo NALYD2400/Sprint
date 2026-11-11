@@ -3,6 +3,7 @@ mod env_files;
 mod port_inspector;
 mod process_manager;
 mod project_scanner;
+mod project_icons;
 mod shortcut;
 mod system;
 mod system_metrics;
@@ -182,6 +183,7 @@ pub fn run() {
             get_settings_cmd,
             save_settings_cmd,
             detect_stack_cmd,
+            project_icons::get_project_icons_cmd,
             start_server_cmd,
             stop_server_cmd,
             port_inspector::get_ports_cmd,

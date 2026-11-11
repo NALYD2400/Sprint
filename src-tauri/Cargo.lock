@@ -3746,6 +3746,7 @@ dependencies = [
 name = "sprint"
 version = "0.5.14"
 dependencies = [
+ "base64 0.22.1",
  "dirs-next",
  "netstat2",
  "open",

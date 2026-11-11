@@ -1,3 +1,4 @@
+import { useProjectIcons } from '../hooks/useProjectIcons';
 import { useCallback, useEffect, useState } from 'react';
 import { triggerToast } from '../lib/toastBus';
 import { loadPrefs, savePrefs, applyPrefs } from '../lib/prefs';
@@ -5,7 +6,6 @@ import { NAV_ITEMS } from '../lib/navigation';
 import { APP_VERSION, GITHUB_REPO, isNewerVersion } from '../lib/updates';
 import { isTauriEnv, subscribeTauri } from '../lib/tauri';
 import { useProjects } from '../hooks/useProjects';
-import { useSystemMetrics } from '../hooks/useSystemMetrics';
 
 const TRAY_TABS = ['dashboard', 'projects', 'terminal', 'settings'];
 
@@ -34,7 +34,7 @@ export function useShell() {
   const [settingsSection, setSettingsSection] = useState('appearance');
 
   const { projects, saveProjects, reload: reloadProjects, loading } = useProjects();
-  const metrics = useSystemMetrics();
+  const projectIcons = useProjectIcons(projects);
 
   const consumeBrowserTarget = useCallback(() => setBrowserTarget({ serverId: null, url: null }), []);
 
@@ -200,10 +200,10 @@ export function useShell() {
     settingsSection,
     setSettingsSection,
     projects,
+    projectIcons,
     saveProjects,
     reloadProjects,
     loading,
-    metrics,
     activeServersCount,
     handleOpenTerminal,
     handleOpenBrowser,

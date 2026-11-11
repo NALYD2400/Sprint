@@ -51,7 +51,7 @@ const LogLine = React.memo(function LogLine({ entry, lineNumber, showRaw, active
 });
 
 // Single Terminal Panel Component
-function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending }) {
+function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, selector }) {
   const { logs, clearLogs } = useServerLogs(server?.id);
   const [filter, setFilter] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
@@ -69,7 +69,7 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending }) {
 
   const displayLogs = frozenLogs || logs;
   const newLines = frozenLogs ? logs.filter((entry) => entry.id > pausedAt.current).length : 0;
-  const errorLogs = displayLogs.filter((entry) => entry.isError);
+  const errorLogs = useMemo(() => displayLogs.filter((entry) => entry.isError), [displayLogs]);
   const pause = () => {
     if (!frozenLogs) {
       setFrozenLogs(logs);
@@ -130,6 +130,11 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending }) {
     const observer = new ResizeObserver(follow);
     observer.observe(screen);
     return () => observer.disconnect();
+  }, [autoScroll, server?.id]);
+
+  useEffect(() => {
+    const screen = scrollRef.current;
+    if (screen && autoScroll) screen.scrollTop = screen.scrollHeight;
   }, [displayLogs, filter, level, expandedHistory, autoScroll]);
 
   const handleCopyLogs = async () => {
@@ -161,6 +166,7 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending }) {
 
   return (
     <div className="terminal-panel">
+      {selector}
       {/* Panel Header */}
       <div className="terminal-toolbar">
         <div className="terminal-actions flex items-center gap-1.5 flex-wrap w-full">
@@ -467,33 +473,13 @@ export default function TerminalView({ projects = [], initialServerId, onSelectT
           ? 'Aucun serveur en marche : les serveurs arrêtés restent disponibles pour être lancés.'
           : 'Une console ouverte reste visible après l’arrêt du serveur pour conserver ses dernières lignes.'}</p>
       )}
-      <div className={'console-selectors ' + (isSplitMode ? 'split' : '')}>
-        <ConsoleSelector
-          server={primaryServer}
-          servers={displayServers}
-          number={1}
-          otherId={isSplitMode ? secondaryServer?.id : null}
-          onChange={setActiveServerId}
-          onStart={handleStartServer}
-          pending={!!getOperation(primaryServer?.id)}
-        />
-        {isSplitMode && (
-          <ConsoleSelector
-            server={secondaryServer}
-            servers={displayServers}
-            number={2}
-            otherId={primaryServer?.id}
-            onChange={setSplitServerId}
-            onStart={handleStartServer}
-            pending={!!getOperation(secondaryServer?.id)}
-          />
-        )}
-      </div>
       <div className={'terminal-grid ' + (isSplitMode ? 'split' : '')}>
         <TerminalPanel key={primaryServer?.id || 'empty-primary'} server={primaryServer} titlePrefix="Console 1"
-          onStart={handleStartServer} pending={!!getOperation(primaryServer?.id)} />
+          onStart={handleStartServer} pending={!!getOperation(primaryServer?.id)}
+          selector={<ConsoleSelector server={primaryServer} servers={displayServers} number={1} otherId={isSplitMode ? secondaryServer?.id : null} onChange={setActiveServerId} onStart={handleStartServer} pending={!!getOperation(primaryServer?.id)} />} />
         {isSplitMode && <TerminalPanel key={secondaryServer?.id || 'empty-secondary'} server={secondaryServer} titlePrefix="Console 2"
-          onStart={handleStartServer} pending={!!getOperation(secondaryServer?.id)} />}
+          onStart={handleStartServer} pending={!!getOperation(secondaryServer?.id)}
+          selector={<ConsoleSelector server={secondaryServer} servers={displayServers} number={2} otherId={primaryServer?.id} onChange={setSplitServerId} onStart={handleStartServer} pending={!!getOperation(secondaryServer?.id)} />} />}
       </div>
     </div>
   );

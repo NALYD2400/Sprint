@@ -59,6 +59,7 @@ window.addEventListener('sprint-toast', event => window.__toasts.push(event.deta
 mockIPC((cmd, args) => {
   window.__layoutCommands.push(cmd); window.__commands.push({cmd,args}); if (cmd === "save_projects_cmd" && window.__failSave) throw new Error("Test: disque indisponible"); if (cmd === "get_tray_state_cmd") return {projects: [{"id":"p1","name":"SR Editer","servers":[{"id":"s1","name":"Application desktop","port":4313,"state":"running"},{"id":"s2","name":"Site web local","port":3000,"state":"stopped"}]},{"id":"p2","name":"SiteStudio","servers":[{"id":"s3","name":"Web Dev Server","port":5173,"state":"running"},{"id":"s4","name":"Tauri Desktop","port":0,"state":"stopped"}]}],running_count:2,activity:window.__trayActivity};
   if (cmd === 'get_projects_cmd') return ${JSON.stringify(projects)};
+  if (cmd === 'get_project_icons_cmd') return window.__projectIcons || {};
   if (cmd === 'get_ports_cmd') { if (window.__failPorts) throw new Error('Scan indisponible'); return window.__ports; }
   if (cmd === 'ping_port_cmd') return window.__portOnline !== false;
   if (cmd === 'start_server_cmd' && window.__failStart) throw new Error('Commande de lancement invalide');

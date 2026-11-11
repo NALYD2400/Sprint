@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { isTauriEnv, subscribeTauri } from '../lib/tauri';
 
 const EMPTY_METRICS = {
@@ -11,9 +11,14 @@ const EMPTY_METRICS = {
   server_metrics: {},
 };
 
+export const SystemMetricsContext = createContext({ ...EMPTY_METRICS, history: [] });
+
 export function useSystemMetrics() {
-  const [metrics, setMetrics] = useState(EMPTY_METRICS);
-  const [history, setHistory] = useState([]);
+  return useContext(SystemMetricsContext);
+}
+
+export function useRecordedSystemMetrics() {
+  const [metrics, setMetrics] = useState(() => ({ ...EMPTY_METRICS, history: [] }));
 
   useEffect(() => {
     if (!isTauriEnv()) return undefined;
@@ -22,7 +27,6 @@ export function useSystemMetrics() {
 
     subscribeTauri('system-metrics', (event) => {
       if (disposed) return;
-      setMetrics(event.payload);
       const { cpu_usage, ram_used_mb, managed_cpu_pct, managed_ram_mb } = event.payload;
       const sample = {
         cpu_usage,
@@ -31,9 +35,10 @@ export function useSystemMetrics() {
         managed_ram_mb,
         timestamp: Date.now(),
       };
-      setHistory((previous) =>
-        [...previous.filter((point) => point.timestamp >= sample.timestamp - 900000), sample].slice(-1000),
-      );
+      setMetrics((previous) => ({
+        ...event.payload,
+        history: [...previous.history.filter((point) => point.timestamp >= sample.timestamp - 900000), sample].slice(-1000),
+      }));
     }).then((fn) => {
       if (disposed) fn();
       else unlisten = fn;
@@ -45,5 +50,5 @@ export function useSystemMetrics() {
     };
   }, []);
 
-  return { ...metrics, history };
+  return metrics;
 }

@@ -11,8 +11,8 @@ export default function WorkspaceMain({ shell }) {
     loading,
     activeTab,
     setActiveTab,
-    metrics,
     projects,
+    projectIcons,
     saveProjects,
     reloadProjects,
     prefs,
@@ -37,7 +37,7 @@ export default function WorkspaceMain({ shell }) {
       id="main-content"
       data-view={activeTab}
       tabIndex={-1}
-      className="flex-1 min-w-0 min-h-0 px-8 lg:px-10 py-7 overflow-y-auto outline-none"
+      className="flex-1 min-w-0 min-h-0 px-6 lg:px-8 py-6 overflow-y-auto outline-none"
     >
       <ErrorBoundary resetKey={activeTab}>
         {loading ? (
@@ -48,8 +48,8 @@ export default function WorkspaceMain({ shell }) {
           <div key={activeTab} className="page-enter">
             {activeTab === 'dashboard' && (
               <HomeView
-                metrics={metrics}
                 projects={projects}
+                projectIcons={projectIcons}
                 onSelectTab={setActiveTab}
                 onAddProject={() => setIsAddModalOpen(true)}
                 onOpenBrowser={handleOpenBrowser}
@@ -65,6 +65,7 @@ export default function WorkspaceMain({ shell }) {
             {activeTab === 'projects' && (
               <ProjectsView
                 projects={projects}
+                projectIcons={projectIcons}
                 saveProjects={saveProjects}
                 favoriteProjectIds={prefs.favoriteProjectIds}
                 onToggleFavorite={toggleFavoriteProject}

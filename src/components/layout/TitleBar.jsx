@@ -1,8 +1,13 @@
 import { readStoredSetting } from '../../lib/settingsStorage';
 import React, { useRef } from 'react';
-import { ArrowUpRight, Minus, Sun, X } from 'lucide-react';
+import { Square, Minus, Sun, X, createLucideIcon } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import logo from '../../../src-tauri/icons/icon.png';
+import logo from '../../assets/navigation/logo.webp';
+
+// Lucide 0.468.0 Moon (ISC), matching the icon used by Nivra.
+const NivraMoon = createLucideIcon('Moon', [
+  ['path', { d: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z', key: 'a7tn18' }],
+]);
 
 export default function TitleBar({ runningCount = 0, dark = true, onToggleTheme }) {
   const maximizePending = useRef(false);
@@ -76,14 +81,14 @@ export default function TitleBar({ runningCount = 0, dark = true, onToggleTheme 
   return (
     <div
       data-tauri-drag-region
-      className="h-16 shrink-0 w-full flex items-center justify-between pl-2 select-none z-50 text-xs cursor-default"
+      className="h-14 shrink-0 w-full flex items-center justify-between pl-2.5 select-none z-50 text-xs cursor-default"
     >
       <div data-tauri-drag-region className="flex items-center gap-3 min-w-0 pointer-events-none">
         <img
           src={logo}
           alt=""
           draggable="false"
-          className="w-11 h-11"
+          className="w-10 h-10"
         />
         <span className="sprint-wordmark">Sprint<span className="sprint-wordmark-dot">.</span></span>
         {runningCount > 0 && (
@@ -114,18 +119,13 @@ export default function TitleBar({ runningCount = 0, dark = true, onToggleTheme 
           title={dark ? 'Passer en mode clair' : 'Passer en mode sombre'}
           className={ctl}
         >
-          {dark ? <Sun size={17} strokeWidth={1.8} aria-hidden="true" /> : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20.5 13.1A8.6 8.6 0 0 1 10.9 3.5a8.6 8.6 0 1 0 9.6 9.6Z" />
-            </svg>
-          )}
+          {dark ? <Sun size={15} aria-hidden="true" /> : <NivraMoon size={15} aria-hidden="true" />}
         </button>
         <button type="button" onClick={handleMinimize} className={ctl} title="Réduire" aria-label="Réduire">
           <Minus className="w-[15px] h-[15px]" strokeWidth={1.6} />
         </button>
         <button type="button" onClick={handleMaximize} className={ctl} title="Agrandir / Restaurer" aria-label="Agrandir / Restaurer">
-          <ArrowUpRight className="w-[15px] h-[15px]" strokeWidth={1.6} />
+          <Square className="w-[13px] h-[13px]" strokeWidth={1.6} />
         </button>
         <button type="button" onClick={handleClose} className={`${ctl} window-close`} title={closeTitle} aria-label={closeTitle}>
           <X className="w-[15px] h-[15px]" strokeWidth={1.6} />

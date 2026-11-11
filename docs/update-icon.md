@@ -1,0 +1,9 @@
+# Icône de mise à jour Sprint
+
+Asset : `src/assets/navigation/update.webp`, 192 × 192 pixels, 8 574 octets, fond transparent. Créée avec l’outil intégré `image_gen`, puis redimensionnée et encodée en WebP pour l’interface. L’alpha vaut zéro dans les quatre coins et le sujet reste opaque.
+
+Le bouton se place au-dessus de Paramètres seulement lorsqu’une version plus récente est détectée. Le menu réduit affiche l’icône avec un petit repère fixe ; le menu développé affiche aussi « Mettre à jour ». La même icône apparaît dans l’en-tête de la fenêtre de mise à jour. La détection et le parcours de téléchargement et d’installation sont conservés.
+
+## Prompt final utilisé
+
+Create ONE isolated premium 3D software update/download icon for the Windows desktop developer app Sprint. Match this existing icon family precisely: dark midnight teal glossy beveled volumetric body, luminous mint turquoise edges and highlights, subtle violet rim ONLY along the lower edge, compact rounded forms with a front-facing slightly elevated 3D view. Design: a thick, instantly legible downward arrow suspended just above a small rounded open download tray. Arrow mint/turquoise with dark teal depth, tray dark teal with turquoise rim and faint purple bottom bevel. No text, no letters, no numbers, no badge, no surrounding square tile, no circle background, no decorative particles, no stars, no cast shadow outside the object. Center the single symbol on a square canvas, object occupies about 75 percent width and height with balanced transparent padding, highly readable at 24px. Clean smooth edge, restrained shiny highlights matching polished teal 3D app navigation icons. Use a perfectly uniform #ff00ff removable chroma-key background with no light variation or background shadow; do not use magenta in the symbol itself. If alpha output is available, use a fully transparent background instead. The symbol itself must remain opaque.

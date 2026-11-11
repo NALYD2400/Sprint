@@ -1,8 +1,5 @@
 import React from 'react';
-import {
-  Settings,
-  Download,
-} from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 import { NAV_ITEMS } from '../../lib/navigation';
 import SprintNavIcon from './SprintNavIcon';
@@ -82,14 +79,13 @@ export default function Sidebar({
           <button
             type="button"
             onClick={onOpenUpdateModal}
-            className="nav-row w-full flex items-center h-10 rounded-lg text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 text-sm cursor-pointer gap-3 px-3"
+            className="nav-row nav-update relative w-full flex items-center h-10 rounded-lg text-sm cursor-pointer gap-3 px-3"
             title="Une nouvelle version est disponible"
             aria-label="Mettre à jour Sprint"
           >
-            <span className="nav-icon">
-              <Download className="w-[18px] h-[18px]" strokeWidth={1.75} />
-            </span>
+            <SprintNavIcon name="update" active />
             <NavLabel className="flex-1 text-left">Mettre à jour</NavLabel>
+            {collapsed && <span className="update-indicator" aria-hidden="true" />}
           </button>
         )}
 

@@ -53,8 +53,8 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
         writeText: async (value) => { window.__clipboard = value; },
       } });
-      const fill = CanvasRenderingContext2D.prototype.fillRect;
-      CanvasRenderingContext2D.prototype.fillRect = function (...args) {
+      const fill = CanvasRenderingContext2D.prototype.clearRect;
+      CanvasRenderingContext2D.prototype.clearRect = function (...args) {
         window.__canvasDraws++;
         return fill.apply(this, args);
       };
@@ -194,7 +194,8 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     check(await page.evaluate(() => {
       const canvas = document.querySelector('[data-bg-canvas] canvas');
       const bounds = canvas.getBoundingClientRect();
-      return Math.abs(bounds.width / 1.12 - canvas.width) < 2
+      return Math.abs(bounds.width / 1.12 / 4 - canvas.width) < 2
+        && Math.abs(canvas.width / canvas.height - bounds.width / bounds.height) < 0.01
         && bounds.left < 0 && bounds.right > innerWidth;
     }), 'background resizes correctly with comfortable text and expanded sidebar');
     await page.screenshot({ path: art + '/sprint-background-dark.png' });

@@ -1,16 +1,17 @@
+import ProjectAvatar from '../../components/ui/ProjectAvatar';
 import React, { useState } from 'react';
-import { Plus, SlidersHorizontal, Globe, ScrollText, ArrowRight, Pin, AlertTriangle } from 'lucide-react';
+import { Plus, SlidersHorizontal, Globe, ScrollText, ArrowRight, Pin, AlertTriangle, Search, ChevronDown, Activity } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import SprintNavIcon from '../../components/layout/SprintNavIcon';
 import ResourceChart from '../../components/ui/ResourceChart';
 import ServerControls from '../../components/ui/ServerControls';
 import { dashboardPrefs } from '../../lib/dashboardPrefs';
+import { useSystemMetrics } from '../../hooks/useSystemMetrics';
 
 const ramText = (mb) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} Go` : `${Math.round(mb)} Mo`);
 const number = (value) => (Number.isFinite(value) ? Math.max(0, value) : 0);
 
 export default function HomeView({
-  metrics,
   projects,
   onSelectTab,
   onAddProject,
@@ -18,9 +19,13 @@ export default function HomeView({
   prefs,
   onCustomize,
   onOpenTerminal,
+  projectIcons = {},
 }) {
+  const metrics = useSystemMetrics();
   const config = dashboardPrefs(prefs?.dashboard);
   const [serverFilter, setServerFilter] = useState('all');
+  const [serverSearch, setServerSearch] = useState('');
+  const [showCharts, setShowCharts] = useState(false);
   const favorites = new Set(prefs?.favoriteProjectIds || []);
   const servers = projects.flatMap((project) =>
     (project.servers || []).map((server) => ({ ...server, project })),
@@ -36,8 +41,10 @@ export default function HomeView({
     { id: 'active', label: 'Actifs', count: servers.filter(active).length },
     { id: 'errors', label: 'Erreurs', count: errorCount },
   ];
-  const visibleServers = servers.filter((server) => serverFilter === 'all'
+  const search = serverSearch.trim().toLowerCase();
+  const visibleServers = servers.filter((server) => (serverFilter === 'all'
     || (serverFilter === 'active' ? active(server) : needsAttention(server)))
+    && (!search || `${server.project.name} ${server.name} ${server.port || ''}`.toLowerCase().includes(search)))
     .sort((a, b) => priority(a) - priority(b)
       || Number(favorites.has(b.project.id)) - Number(favorites.has(a.project.id)));
   const system = config.scope === 'system';
@@ -49,23 +56,28 @@ export default function HomeView({
     stats: (
       <section className="dashboard-stats" aria-label="Statistiques">
         {[
-          ['Projets', projects.length, 'enregistrés'],
-          ['Serveurs actifs', running.length, `sur ${servers.length} configurés`],
+          ['Projets', projects.length, 'enregistrés', 'projects'],
+          ['Serveurs actifs', running.length, `sur ${servers.length} configurés`, Activity],
           [
             'Processeur',
             hasMetrics ? `${number(metrics[cpuField]).toFixed(1)} %` : '—',
             system ? 'Ordinateur' : 'Vos projets',
+            'cpu',
           ],
           [
             'Mémoire',
             hasMetrics ? ramText(number(metrics[ramField])) : '—',
             system ? 'Ordinateur' : 'Vos projets',
+            'memory',
           ],
-        ].map(([label, value, detail]) => (
-          <div key={label}>
+        ].map(([label, value, detail, Icon]) => (
+          <div key={label} className="dashboard-stat">
+            <span className="dashboard-stat-icon" aria-hidden="true">{typeof Icon === 'string' ? <SprintNavIcon name={Icon} active /> : <Icon size={19} />}</span>
+            <div>
             <p className="text-xs text-zinc-400">{label}</p>
             <p className="stat-value text-2xl text-zinc-100 mt-2">{value}</p>
             <p className="text-xs text-zinc-500 mt-1">{detail}</p>
+            </div>
           </div>
         ))}
       </section>
@@ -95,7 +107,7 @@ export default function HomeView({
     servers: (
       <section className="dashboard-servers">
         <div className="dashboard-server-heading">
-          <h2 className="text-sm font-medium text-zinc-100">Serveurs</h2>
+          <h2 className="text-sm font-medium text-zinc-100">Vos serveurs</h2>
           <button onClick={() => onSelectTab('projects')} className="quiet-button">
             Gérer les projets <ArrowRight size={14} />
           </button>
@@ -110,7 +122,10 @@ export default function HomeView({
                 </button>
               ))}
             </div>
-            <p className="dashboard-sort-note">Erreurs et serveurs actifs en premier</p>
+            <label className="workspace-search">
+              <Search size={14} aria-hidden="true" />
+              <input aria-label="Rechercher un serveur" value={serverSearch} onChange={event => setServerSearch(event.target.value)} placeholder="Projet, serveur ou port…" />
+            </label>
           </div>
         )}
         {servers.length === 0 ? (
@@ -119,19 +134,18 @@ export default function HomeView({
           </p>
         ) : visibleServers.length === 0 ? (
           <div className="dashboard-filter-empty" role="status">
-            <p>{serverFilter === 'errors' ? 'Aucun serveur en erreur.' : 'Aucun serveur actif.'}</p>
-            <button type="button" className="quiet-button" onClick={() => setServerFilter('all')}>
+            <p>{search ? 'Aucun serveur ne correspond à cette recherche.' : serverFilter === 'errors' ? 'Aucun serveur en erreur.' : 'Aucun serveur actif.'}</p>
+            <button type="button" className="quiet-button" onClick={() => { setServerFilter('all'); setServerSearch(''); }}>
               Afficher tous les serveurs
             </button>
           </div>
         ) : (
           visibleServers.map((server) => (
-            <div key={server.id} data-server-id={server.id} className="server-overview-row">
-              {needsAttention(server) ? <AlertTriangle size={15} className="server-attention shrink-0" aria-label="Erreur" /> : (
-              <span
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${server.state === 'running' ? 'bg-emerald-400' : server.state === 'starting' ? 'bg-amber-400' : 'bg-zinc-500'}`}
-              />
-              )}
+            <div key={server.id} data-server-id={server.id} className="server-overview-row" data-state={server.state}>
+              <span className="server-project-avatar">
+                <ProjectAvatar project={server.project} image={projectIcons[server.project.id]} />
+                <span className={`server-avatar-status ${needsAttention(server) ? 'is-error' : server.state === 'running' ? 'is-running' : server.state === 'starting' ? 'is-starting' : ''}`} />
+              </span>
               <div className="server-overview-info">
                 <p className="server-overview-name">
                   {favorites.has(server.project.id) && <Pin size={13} className="favorite-marker" aria-label="Projet favori" />}
@@ -139,6 +153,7 @@ export default function HomeView({
                   <span className="server-overview-detail">{server.name}</span>
                 </p>
                 <p className={`server-overview-status${needsAttention(server) ? ' server-attention' : ''}`} title={server.lastExitReason || undefined}>
+                  {needsAttention(server) && <AlertTriangle size={12} className="inline mr-1" aria-hidden="true" />}
                   {needsAttention(server) && server.lastExitReason ? 'Arrêt inattendu · ' + server.lastExitReason : server.state === 'running'
                     ? 'En cours'
                     : server.state === 'starting'
@@ -181,7 +196,7 @@ export default function HomeView({
   };
   return (
     <div
-      className="page workspace-page"
+      className="page workspace-page dashboard-page"
     >
       <PageHeader
         title="Tableau de bord"
@@ -205,11 +220,20 @@ export default function HomeView({
         }
       />
       <div className="dashboard-layout">
-        {config.blocks
-          .filter((id) => !config.hidden.includes(id))
-          .map((id) => (
-            <React.Fragment key={id}>{blocks[id]}</React.Fragment>
-          ))}
+        {!config.hidden.includes('stats') && blocks.stats}
+        {!config.hidden.includes('servers') && blocks.servers}
+        {(!config.hidden.includes('cpu') || !config.hidden.includes('ram')) && (
+          <section className="dashboard-resources" aria-label="Ressources">
+            <button type="button" className="resource-toggle" aria-expanded={showCharts} aria-controls="dashboard-charts" onClick={() => setShowCharts(value => !value)}>
+              <span><Activity size={16} aria-hidden="true" /><strong>Ressources</strong><span>{system ? 'Tout l’ordinateur' : 'Vos projets'} · {config.period / 60} min</span></span>
+              <span>{showCharts ? 'Masquer les graphiques' : 'Afficher les graphiques'}<ChevronDown size={15} className={showCharts ? 'rotate-180' : ''} /></span>
+            </button>
+            <div id="dashboard-charts" className="dashboard-charts" hidden={!showCharts}>
+              {showCharts && !config.hidden.includes('cpu') && blocks.cpu}
+              {showCharts && !config.hidden.includes('ram') && blocks.ram}
+            </div>
+          </section>
+        )}
       </div>
       {config.hidden.length === 4 && (
         <div className="empty-state">
@@ -219,7 +243,7 @@ export default function HomeView({
           </button>
         </div>
       )}
-      <p className="text-xs text-zinc-500 mt-6">
+      <p className="dashboard-footnote">
         Mesures en direct · Historique de cette session, jusqu’à 15 minutes.
       </p>
     </div>

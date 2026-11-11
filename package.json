@@ -13,7 +13,9 @@
     "tauri": "tauri",
     "test:ui": "node scripts/verify-ui.cjs",
     "test:dashboard": "node scripts/verify-dashboard.cjs",
-    "test:flows": "node scripts/verify-server-flows.cjs"
+    "test:flows": "node scripts/verify-server-flows.cjs",
+    "test:workspace": "node scripts/verify-workspace-ux.cjs",
+    "test:performance": "node scripts/verify-performance.cjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.3",

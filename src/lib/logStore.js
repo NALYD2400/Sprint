@@ -33,10 +33,16 @@ function ensureCache(serverId) {
 
 function flushLogs() {
   flushScheduled = false;
-  for (const [serverId, lines] of pendingLines) {
+  for (const [serverId, batch] of pendingLines) {
     pendingLines.delete(serverId);
     const cache = ensureCache(serverId);
-    for (const line of lines) {
+    // Earlier lines in a single burst would be evicted by the history limit
+    // anyway; avoid parsing and allocating entries that cannot be retained.
+    logSeq += Math.max(0, batch.total - MAX_LOG_LINES);
+    const count = Math.min(batch.total, MAX_LOG_LINES);
+    const start = batch.total > MAX_LOG_LINES ? batch.total % MAX_LOG_LINES : 0;
+    for (let index = 0; index < count; index++) {
+      const line = batch.lines[(start + index) % MAX_LOG_LINES];
       const meta = parseLogLine(line);
       cache.push({ id: ++logSeq, raw: line, ...meta });
     }
@@ -44,8 +50,9 @@ function flushLogs() {
       cache.splice(0, cache.length - MAX_LOG_LINES);
     }
     const listeners = logListeners.get(serverId);
-    if (listeners) {
-      for (const fn of listeners) fn([...cache]);
+    if (listeners?.size) {
+      const snapshot = [...cache];
+      for (const fn of listeners) fn(snapshot);
     }
   }
 }
@@ -83,10 +90,12 @@ if (isTauriEnv()) {
 
         let batch = pendingLines.get(server_id);
         if (!batch) {
-          batch = [];
+          batch = { lines: [], total: 0 };
           pendingLines.set(server_id, batch);
         }
-        batch.push(line);
+        // A bounded ring keeps bursts from allocating an unbounded pending queue.
+        batch.lines[batch.total % MAX_LOG_LINES] = line;
+        batch.total++;
 
         if (!flushScheduled) {
           flushScheduled = true;

@@ -81,11 +81,10 @@ textarea,
   inset: -120px;
   width: calc(100% + 240px);
   height: calc(100% + 240px);
-  filter: blur(46px);
 }
 .sprint-wordmark {
   font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
-  font-size: 22px;
+  font-size: 21px;
   line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.035em;
@@ -95,7 +94,7 @@ textarea,
   color: var(--accent-readable);
 }
 .window-controls {
-  align-self: flex-start;
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 0;

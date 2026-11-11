@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+use sysinfo::{ProcessRefreshKind, System};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::config_store::load_projects;
@@ -45,12 +45,14 @@ fn collect_metrics(
     let mut total_cpu: f32 = 0.0;
     let mut total_ram_bytes: u64 = 0;
     let mut children: HashMap<u32, Vec<u32>> = HashMap::new();
-    for (pid, process) in system.processes() {
-        if let Some(parent) = process.parent() {
-            children
-                .entry(parent.as_u32())
-                .or_default()
-                .push(pid.as_u32());
+    if !active_pids.is_empty() {
+        for (pid, process) in system.processes() {
+            if let Some(parent) = process.parent() {
+                children
+                    .entry(parent.as_u32())
+                    .or_default()
+                    .push(pid.as_u32());
+            }
         }
     }
     let cpu_count = system.cpus().len().max(1) as f32;
@@ -103,9 +105,7 @@ struct GuardRestart {
 
 pub fn start_metrics_poller(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        let sys = Arc::new(Mutex::new(System::new_with_specifics(
-            RefreshKind::new().with_processes(ProcessRefreshKind::new().with_cpu().with_memory()),
-        )));
+        let sys = Arc::new(Mutex::new(System::new()));
         let last_restart: Arc<Mutex<HashMap<String, Instant>>> =
             Arc::new(Mutex::new(HashMap::new()));
 

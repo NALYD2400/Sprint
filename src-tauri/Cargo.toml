@@ -29,6 +29,7 @@ dirs-next = "2.0"
 netstat2 = "0.9"
 sha2 = "0.10"
 parking_lot = "0.12"
+base64 = "0.22.1"
 
 [features]
 default = ["custom-protocol"]

@@ -291,34 +291,6 @@ export default function BrowserView({ projects = [], initialServerId, initialUrl
         title="Aperçu web" icon={<SprintNavIcon name="browser" active />}
         actions={
           <>
-            <div className="preview-device-controls">
-              <div className="segmented-control" aria-label="Format de l’aperçu">
-                {DEVICES.map(([id, label, Icon]) => (
-                  <button key={id} aria-pressed={mode === id} onClick={() => setMode(id)}>
-                    {Icon && <Icon size={14} />}
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {mode === 'custom' && (
-                <div className="preview-custom-size">
-                  <input aria-label="Largeur de l’aperçu" type="number" min="240" max="3840"
-                    value={width} className="control-input"
-                    onChange={(event) => setWidth(event.target.value)}
-                    onBlur={() => setWidth(Math.min(3840, Math.max(240, Number(width) || 1280)))} />
-                  <span aria-hidden="true">×</span>
-                  <input aria-label="Hauteur de l’aperçu" type="number" min="240" max="2160"
-                    value={height} className="control-input"
-                    onChange={(event) => setHeight(event.target.value)}
-                    onBlur={() => setHeight(Math.min(2160, Math.max(240, Number(height) || 800)))} />
-                </div>
-              )}
-              <select className="control-input" aria-label="Zoom de l’aperçu"
-                value={fit ? 'fit' : 'actual'} onChange={(event) => setFit(event.target.value === 'fit')}>
-                <option value="fit">Ajuster</option>
-                <option value="actual">100 %</option>
-              </select>
-            </div>
             <div className="preview-header-actions">
               <button
                 className="icon-button"
@@ -404,6 +376,37 @@ export default function BrowserView({ projects = [], initialServerId, initialUrl
             <ExternalLink size={14} />
           </button>
         </form>
+
+      </div>
+      <div className="preview-controls">
+            <div className="preview-device-controls">
+              <div className="segmented-control" aria-label="Format de l’aperçu">
+                {DEVICES.map(([id, label, Icon]) => (
+                  <button key={id} aria-pressed={mode === id} onClick={() => setMode(id)}>
+                    {Icon && <Icon size={14} />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {mode === 'custom' && (
+                <div className="preview-custom-size">
+                  <input aria-label="Largeur de l’aperçu" type="number" min="240" max="3840"
+                    value={width} className="control-input"
+                    onChange={(event) => setWidth(event.target.value)}
+                    onBlur={() => setWidth(Math.min(3840, Math.max(240, Number(width) || 1280)))} />
+                  <span aria-hidden="true">×</span>
+                  <input aria-label="Hauteur de l’aperçu" type="number" min="240" max="2160"
+                    value={height} className="control-input"
+                    onChange={(event) => setHeight(event.target.value)}
+                    onBlur={() => setHeight(Math.min(2160, Math.max(240, Number(height) || 800)))} />
+                </div>
+              )}
+              <select className="control-input" aria-label="Zoom de l’aperçu"
+                value={fit ? 'fit' : 'actual'} onChange={(event) => setFit(event.target.value === 'fit')}>
+                <option value="fit">Ajuster</option>
+                <option value="actual">100 %</option>
+              </select>
+            </div>
         <div className="preview-server-state">
           <span className="preview-status" role="status" title={dimensions}>
             <span className={'server-dot ' + (localTarget && online ? 'running' : '')} />

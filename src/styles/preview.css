@@ -37,9 +37,9 @@
 }
 .preview-address:focus-within { outline: 2px solid var(--accent-readable); outline-offset: 2px; }
 .preview-address input:focus { box-shadow: none !important; }
-.preview-server-select { width: 210px; min-width: 0; text-overflow: ellipsis; }
+.preview-server-select { width: 230px; min-width: 0; text-overflow: ellipsis; }
 .preview-toolbar .control-input { min-height: 32px; height: 32px; }
-.preview-server-state { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.preview-server-state { display: flex; align-items: center; gap: 8px; }
 .preview-device-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .preview-device-controls .segmented-control { flex-wrap: wrap; border-radius: var(--radius-ctl); border: 1px solid var(--line); padding: 2px; }
 .preview-device-controls .control-input { min-height: 32px; height: 32px; }
@@ -109,19 +109,13 @@
 }
 .preview-page > header,
 .logs-page > header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   flex-direction: row;
   align-items: center;
   flex-shrink: 0;
   gap: 8px;
 }
 .preview-page > header > div:last-child { flex: 1; justify-content: flex-end; gap: 6px; }
-@container workspace (max-width: 880px) {
-  .preview-page > header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
-  .preview-page > header > div:last-child { display: contents; }
-  .preview-header-actions { grid-column: 2; grid-row: 1; justify-content: flex-end; }
-  .preview-device-controls { grid-column: 1 / -1; grid-row: 2; }
-}
 .preview-toolbar {
   flex-shrink: 0;
 }
@@ -166,4 +160,14 @@
   border-top: 1px solid var(--line);
   padding-top: 8px;
   font: 11px/1.7 var(--font-mono);
+}
+
+.preview-controls { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:8px 0; flex:none; }
+.preview-toolbar { border:1px solid var(--line); border-radius:10px; padding:6px; background:color-mix(in srgb,var(--surface-1) 45%,transparent); }
+.preview-toolbar .preview-address { border:0; background:transparent; }
+.preview-toolbar > select { border:0; border-right:1px solid var(--line); border-radius:0; background:transparent; }
+.preview-header-actions { gap:8px; }
+@container workspace (max-width: 720px) {
+  .preview-server-select { width:180px; }
+  .preview-controls { align-items:flex-start; }
 }

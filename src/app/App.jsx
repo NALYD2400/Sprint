@@ -7,8 +7,13 @@ import WorkspaceMain from './Workspace';
 import AppModals from './AppModals';
 import { useShell } from './useShell';
 import { resolveTheme } from '../lib/prefs';
+import SystemMetricsProvider from '../components/layout/SystemMetricsProvider';
 
 export default function App() {
+  return <SystemMetricsProvider><AppShell /></SystemMetricsProvider>;
+}
+
+function AppShell() {
   const shell = useShell();
 
   return (

@@ -7,7 +7,7 @@ import DashboardSettings from './DashboardSettings';
 import AppearanceSettings from './AppearanceSettings';
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Palette, Activity, SlidersHorizontal, Monitor, Archive, Info, Keyboard } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import SprintNavIcon from '../../components/layout/SprintNavIcon';
 import { DEFAULT_PREFS } from '../../lib/prefs';
@@ -262,13 +262,13 @@ export default function SettingsView({
     saveUpdatedSettings({ ...settings, [key]: value });
   };
   const categories = [
-    ['appearance', 'Apparence', 'Mode sombre, texte et animations.'],
-    ['dashboard', 'Tableau de bord', 'Mesures et blocs affichés.'],
-    ['supervision', 'Serveurs & logs', 'Relance, journal et serveurs arrêtés.'],
-    ['system', 'Système', 'Raccourci, démarrage et notifications.'],
-    ['storage', 'Sauvegardes', 'Exportez ou restaurez vos projets.'],
-    ['about', 'À propos', 'Version et mises à jour.'],
-    ['help', 'Aide et raccourcis', 'Raccourcis clavier et termes utilisés dans Sprint.'],
+    ['appearance', 'Apparence', 'Mode sombre, texte et animations.', Palette],
+    ['dashboard', 'Tableau de bord', 'Mesures et blocs affichés.', Activity],
+    ['supervision', 'Serveurs & logs', 'Relance, journal et serveurs arrêtés.', SlidersHorizontal],
+    ['system', 'Système', 'Raccourci, démarrage et notifications.', Monitor],
+    ['storage', 'Sauvegardes', 'Exportez ou restaurez vos projets.', Archive],
+    ['about', 'À propos', 'Version et mises à jour.', Info],
+    ['help', 'Aide et raccourcis', 'Raccourcis clavier et termes utilisés dans Sprint.', Keyboard],
   ];
 
   return (
@@ -285,7 +285,7 @@ export default function SettingsView({
       />
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Sections des paramètres">
-          {categories.map(([id, label]) => (
+          {categories.map(([id, label, , Icon]) => (
             <button
               key={id}
               onClick={() => {
@@ -294,12 +294,13 @@ export default function SettingsView({
               }}
               aria-current={activeTab === id ? 'page' : undefined}
             >
-              {label}
+              <Icon size={15} aria-hidden="true" />{label}
             </button>
           ))}
         </nav>
         <div className="settings-content" ref={contentRef}>
           <div key={activeTab} className="settings-section-enter">
+            <div className="settings-section-top">
             <div className="settings-section-heading">
               <h2>{categories.find(([id]) => id === activeTab)?.[1]}</h2>
               <p>{categories.find(([id]) => id === activeTab)?.[2]}</p>
@@ -308,6 +309,7 @@ export default function SettingsView({
               {saveState === 'saving' ? 'Enregistrement…' : saveState === 'error' ? 'Modifications non enregistrées' : savedSuccess ? 'Enregistré' : 'Enregistrement automatique'}
               {saveState === 'error' && <button className="quiet-button" onClick={() => saveUpdatedSettings(settings)}>Réessayer</button>}
             </div>}
+            </div>
             {activeTab === 'appearance' && <AppearanceSettings prefs={prefs} onPrefsChange={onPrefsChange} showAutoSaved={showAutoSaved} />}
             {activeTab === 'dashboard' && <DashboardSettings config={config} changeDashboard={changeDashboard} />}
             {activeTab === 'supervision' && <SupervisionSettings settings={settings} toggleSetting={toggleSetting} />}

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { DownloadCloud, RefreshCw, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import Modal from '../ui/Modal';
+import SprintNavIcon from '../layout/SprintNavIcon';
 import { GITHUB_REPO, isNewerVersion } from '../../lib/updates';
 
 export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
@@ -177,9 +178,12 @@ export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
       backdropClassName="workspace-modal-backdrop"
     >
       <header className="update-header">
-        <div>
-          <h2 id={titleId}>Mises à jour</h2>
-          <p>Sprint · version {currentVersion}</p>
+        <div className="flex items-center gap-3">
+          <SprintNavIcon name="update" active />
+          <div>
+            <h2 id={titleId}>Mises à jour</h2>
+            <p>Sprint · version {currentVersion}</p>
+          </div>
         </div>
         <button
           type="button"
