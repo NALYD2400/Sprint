@@ -1,6 +1,6 @@
 import { readStoredSetting } from '../../lib/settingsStorage';
 import React, { useRef } from 'react';
-import { ArrowUpRight, Minus, Moon, Sun, X } from 'lucide-react';
+import { ArrowUpRight, Minus, Sun, X } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import logo from '../../../src-tauri/icons/icon.png';
 
@@ -114,7 +114,12 @@ export default function TitleBar({ runningCount = 0, dark = true, onToggleTheme 
           title={dark ? 'Passer en mode clair' : 'Passer en mode sombre'}
           className={ctl}
         >
-          {dark ? <Sun className="w-[15px] h-[15px]" strokeWidth={1.6} /> : <Moon className="w-[15px] h-[15px]" strokeWidth={1.6} />}
+          {dark ? <Sun size={17} strokeWidth={1.8} aria-hidden="true" /> : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20.5 13.1A8.6 8.6 0 0 1 10.9 3.5a8.6 8.6 0 1 0 9.6 9.6Z" />
+            </svg>
+          )}
         </button>
         <button type="button" onClick={handleMinimize} className={ctl} title="Réduire" aria-label="Réduire">
           <Minus className="w-[15px] h-[15px]" strokeWidth={1.6} />
