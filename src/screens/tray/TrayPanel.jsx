@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { ArrowUpRight, Settings, Terminal, Play, Square, Power, Loader2, X } from 'lucide-react';
+import { ArrowUpRight, Play, Square, Loader2, X } from 'lucide-react';
 import { applyPrefs, loadPrefs } from '../../lib/prefs';
 import { applyAccent } from '../../lib/accent';
 import { APP_VERSION } from '../../lib/updates';
@@ -126,16 +126,21 @@ export default function TrayPanel() {
     <main className="tray-panel">
       <header className="tray-heading">
         <div>
-          <h1>Sprint</h1>
-          <p>{subtitle}</p>
-          {disabled && <Loader2 size={12} className="animate-spin" />}
+          <div className="tray-title">
+            <h1>Sprint</h1>
+            <span className="tray-mark" aria-hidden="true">.</span>
+          </div>
+          <p>
+            {subtitle}
+            {disabled && <Loader2 size={11} className="animate-spin" />}
+          </p>
         </div>
         <button
           className="icon-button"
           aria-label="Fermer le panneau"
           onClick={() => invoke('hide_window_cmd').catch(() => {})}
         >
-          <X size={16} />
+          <X size={14} />
         </button>
       </header>
       <div className="tray-server-list" aria-label="Serveurs configurés">
@@ -143,42 +148,53 @@ export default function TrayPanel() {
           <p className="tray-empty">Chargement des serveurs…</p>
         ) : !servers.length ? (
           <div className="tray-empty">
-            <p>Ajoutez votre premier projet pour retrouver ses serveurs ici.</p>
+            <p>Ajoutez un projet pour retrouver ses serveurs ici.</p>
             <button className="quiet-button" onClick={() => act('open', { tab: 'projects' })}>
-              Ajouter un projet <ArrowUpRight size={13} />
+              Ajouter un projet
             </button>
           </div>
         ) : (
-          servers.map((server) => (
-            <div className="tray-server" key={server.id}>
-              <span className={'server-dot ' + (server.state === 'running' ? 'running' : '')} />
-              <button
-                className="tray-server-name"
-                onClick={() => act('open', { tab: 'terminal', serverId: server.id })}
-                title={server.projectName + ' · ' + server.name}
-              >
-                <strong>{server.name}</strong>
-                <span>
-                  {server.projectName}
-                  {server.port ? ' · :' + server.port : ''}
-                  {server.state !== 'running' ? ' · Arrêté' : ''}
-                </span>
-              </button>
-              <button
-                className="icon-button"
-                disabled={disabled}
-                onClick={() => act('toggle-server', { serverId: server.id })}
-                aria-label={(server.state === 'running' ? 'Arrêter ' : 'Lancer ') + server.name}
-                title={server.state === 'running' ? 'Arrêter ce serveur' : 'Lancer ce serveur'}
-              >
-                {server.state === 'running' ? <Square size={13} /> : <Play size={14} />}
-              </button>
-            </div>
-          ))
+          servers.map((server) => {
+            const live = server.state === 'running';
+            return (
+              <div className={'tray-server' + (live ? ' is-live' : '')} key={server.id}>
+                <span className={'server-dot' + (live ? ' running' : '')} />
+                <button
+                  className="tray-server-name"
+                  onClick={() => act('open', { tab: 'terminal', serverId: server.id })}
+                  title={server.projectName + ' · ' + server.name}
+                >
+                  <strong>{server.name}</strong>
+                  <span>
+                    {server.projectName}
+                    {server.port ? ' · :' + server.port : ''}
+                    {live && <em> · en marche</em>}
+                  </span>
+                </button>
+                <button
+                  className={'icon-button tray-toggle' + (live ? ' is-stop' : '')}
+                  disabled={disabled}
+                  onClick={() => act('toggle-server', { serverId: server.id })}
+                  aria-label={(live ? 'Arrêter ' : 'Lancer ') + server.name}
+                  title={live ? 'Arrêter' : 'Lancer'}
+                >
+                  {live ? <Square size={11} /> : <Play size={12} />}
+                </button>
+              </div>
+            );
+          })
         )}
       </div>
+      {error && (
+        <div className="tray-error" role="alert">
+          {error}
+          <button className="quiet-button" onClick={refresh}>
+            Réessayer
+          </button>
+        </div>
+      )}
       {confirmStop ? (
-        <div className="tray-quit-confirm">
+        <div className="tray-confirm">
           <p>
             Arrêter les {running} serveur{running > 1 ? 's' : ''} en marche ?
           </p>
@@ -187,7 +203,7 @@ export default function TrayPanel() {
               Annuler
             </button>
             <button
-              className="btn"
+              className="tray-confirm-go"
               disabled={disabled}
               onClick={() => {
                 setConfirmStop(false);
@@ -199,13 +215,9 @@ export default function TrayPanel() {
           </div>
         </div>
       ) : (
-        <div className="tray-batch-actions">
-          <button
-            className="quiet-button"
-            disabled={disabled || !stopped}
-            onClick={() => act('start-all')}
-          >
-            <Play size={13} />
+        <div className="tray-batch">
+          <button className="quiet-button" disabled={disabled || !stopped} onClick={() => act('start-all')}>
+            <Play size={12} />
             Tout lancer <span>{stopped}</span>
           </button>
           <button
@@ -213,61 +225,44 @@ export default function TrayPanel() {
             disabled={disabled || !running}
             onClick={() => setConfirmStop(true)}
           >
-            <Square size={12} />
+            <Square size={11} />
             Tout arrêter <span>{running}</span>
           </button>
         </div>
       )}
-      {error && (
-        <div className="tray-error" role="alert">
-          {error}
-          <button className="quiet-button" onClick={refresh}>
-            Réessayer
-          </button>
-        </div>
-      )}
-      <nav className="tray-navigation" aria-label="Accès rapide">
-        <button className="btn" onClick={() => act('open')}>
-          Ouvrir Sprint
-          <ArrowUpRight size={13} />
-        </button>
-        <button className="quiet-button" onClick={() => act('open', { tab: 'terminal' })}>
-          <Terminal size={13} />
-          Logs
-        </button>
-        <button className="quiet-button" onClick={() => act('open', { tab: 'settings' })}>
-          <Settings size={13} />
-          Paramètres
-        </button>
-      </nav>
+      <button className="tray-open" onClick={() => act('open')}>
+        Ouvrir Sprint
+        <ArrowUpRight size={13} />
+      </button>
       <footer className="tray-footer">
         {confirmQuit ? (
-          <div className="tray-quit-confirm">
+          <div className="tray-confirm">
             <p>
               Arrêter les {running} serveur{running > 1 ? 's' : ''} et quitter Sprint ?
             </p>
             <div>
-              <button
-                className="quiet-button"
-                disabled={disabled}
-                onClick={() => setConfirmQuit(false)}
-              >
+              <button className="quiet-button" disabled={disabled} onClick={() => setConfirmQuit(false)}>
                 Annuler
               </button>
-              <button className="btn" disabled={disabled} onClick={() => act('quit')}>
+              <button className="tray-confirm-go" disabled={disabled} onClick={() => act('quit')}>
                 Arrêter et quitter
               </button>
             </div>
           </div>
         ) : (
           <>
-            <span>v{APP_VERSION}</span>
+            <button className="quiet-button" onClick={() => act('open', { tab: 'terminal' })}>
+              Logs
+            </button>
+            <button className="quiet-button" onClick={() => act('open', { tab: 'settings' })}>
+              Paramètres
+            </button>
+            <span className="tray-version">v{APP_VERSION}</span>
             <button
               className="quiet-button"
               disabled={disabled}
               onClick={() => (running ? setConfirmQuit(true) : act('quit'))}
             >
-              <Power size={13} />
               Quitter Sprint
             </button>
           </>

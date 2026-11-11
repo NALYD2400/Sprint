@@ -1,14 +1,11 @@
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::menu::{MenuBuilder, MenuItem, MenuItemBuilder};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{
-    AppHandle, Emitter, Listener, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder,
-};
+use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Listener, Manager};
 
 use crate::config_store::{load_projects, ProjectConfig};
 use crate::{shutdown_all_managed_processes, AppState};
@@ -25,7 +22,6 @@ struct TrayMenuState {
     quit: MenuItem<tauri::Wry>,
     activity: AtomicU8,
     rendered: Mutex<Option<MenuModel>>,
-    last_double_click: Mutex<Option<Instant>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -70,9 +66,6 @@ fn menu_model(configured: &HashSet<String>, running: &HashSet<String>, activity:
 }
 
 fn show_window(app: &AppHandle) {
-    if let Some(panel) = app.get_webview_window("tray") {
-        let _ = panel.hide();
-    }
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
@@ -271,57 +264,6 @@ pub fn tray_action_cmd(
     }
 }
 
-fn panel_position(cursor: (f64, f64), size: (f64, f64), area: (f64, f64, f64, f64)) -> (i32, i32) {
-    let (left, top, width, height) = area;
-    let x =
-        (cursor.0 - size.0 + 16.0).clamp(left + 8.0, (left + width - size.0 - 8.0).max(left + 8.0));
-    let y =
-        (cursor.1 - size.1 - 12.0).clamp(top + 8.0, (top + height - size.1 - 8.0).max(top + 8.0));
-    (x.round() as i32, y.round() as i32)
-}
-
-fn show_panel(app: &AppHandle, cursor: PhysicalPosition<f64>) {
-    let Some(panel) = app.get_webview_window("tray") else {
-        show_window(app);
-        return;
-    };
-    if let Ok(monitors) = panel.available_monitors() {
-        let monitor = monitors.into_iter().find(|monitor| {
-            let p = monitor.position();
-            let s = monitor.size();
-            cursor.x >= p.x as f64
-                && cursor.x < p.x as f64 + s.width as f64
-                && cursor.y >= p.y as f64
-                && cursor.y < p.y as f64 + s.height as f64
-        });
-        if let Some(monitor) = monitor {
-            let area = monitor.work_area();
-            let scale = monitor.scale_factor();
-            let width = 340.0_f64
-                .min(area.size.width as f64 / scale - 16.0)
-                .max(1.0);
-            let height = 400.0_f64
-                .min(area.size.height as f64 / scale - 16.0)
-                .max(1.0);
-            let _ = panel.set_size(tauri::LogicalSize::new(width, height));
-            let (x, y) = panel_position(
-                (cursor.x, cursor.y),
-                (width * scale, height * scale),
-                (
-                    area.position.x as f64,
-                    area.position.y as f64,
-                    area.size.width as f64,
-                    area.size.height as f64,
-                ),
-            );
-            let _ = panel.set_position(PhysicalPosition::new(x, y));
-        }
-    }
-    let _ = panel.show();
-    let _ = panel.set_focus();
-    let _ = panel.emit("tray-panel-opened", ());
-}
-
 pub fn setup(app: &tauri::App) -> tauri::Result<()> {
     let show = MenuItemBuilder::with_id("tray_show", "Ouvrir Sprint").build(app)?;
     let settings = MenuItemBuilder::with_id("tray_settings", "Paramètres").build(app)?;
@@ -349,36 +291,11 @@ pub fn setup(app: &tauri::App) -> tauri::Result<()> {
         quit,
         activity: AtomicU8::new(IDLE),
         rendered: Mutex::new(None),
-        last_double_click: Mutex::new(None),
     });
-    // A dedicated webview provides the same theme, spacing and server controls as Sprint.
-    // Keep the native menu as a fallback if Windows cannot create the panel.
-    let custom_panel =
-        WebviewWindowBuilder::new(app, "tray", WebviewUrl::App("index.html?tray=1".into()))
-            .title("Sprint · Accès rapide")
-            .inner_size(340.0, 400.0)
-            .decorations(false)
-            .resizable(false)
-            .visible(false)
-            .focused(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .shadow(true)
-            .build();
-    if let Ok(panel) = &custom_panel {
-        let handle = panel.clone();
-        panel.on_window_event(move |event| {
-            if matches!(event, tauri::WindowEvent::Focused(false)) {
-                let _ = handle.hide();
-            }
-        });
-    }
     let mut tray = TrayIconBuilder::with_id("main_tray")
         .tooltip("Sprint")
-        .show_menu_on_left_click(false);
-    if custom_panel.is_err() {
-        tray = tray.menu(&menu);
-    }
+        .menu(&menu)
+        .show_menu_on_left_click(true);
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     }
@@ -400,39 +317,13 @@ pub fn setup(app: &tauri::App) -> tauri::Result<()> {
         _ => {}
     })
     .on_tray_icon_event(|tray, event| {
-        if let TrayIconEvent::Click {
-            position,
-            button,
-            button_state: MouseButtonState::Up,
-            ..
-        } = event
-        {
-            let app = tray.app_handle();
-            if app
-                .state::<TrayMenuState>()
-                .last_double_click
-                .lock()
-                .is_some_and(|time| time.elapsed() < Duration::from_millis(350))
-            {
-                return;
-            }
-            if app.get_webview_window("tray").is_some() {
-                show_panel(app, position);
-            } else if button == MouseButton::Left {
-                show_window(app);
-            }
-        } else if matches!(
+        if matches!(
             event,
             TrayIconEvent::DoubleClick {
                 button: MouseButton::Left,
                 ..
             }
         ) {
-            *tray
-                .app_handle()
-                .state::<TrayMenuState>()
-                .last_double_click
-                .lock() = Some(Instant::now());
             show_window(tray.app_handle());
         }
     })
@@ -482,23 +373,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn panel_stays_inside_the_work_area_on_multiple_monitors() {
-        assert_eq!(
-            panel_position((1900.0, 1060.0), (360.0, 500.0), (0.0, 0.0, 1920.0, 1040.0)),
-            (1552, 532)
-        );
-        assert_eq!(
-            panel_position(
-                (-1900.0, 25.0),
-                (540.0, 750.0),
-                (-1920.0, 0.0, 1920.0, 1040.0)
-            ),
-            (-1912, 8)
-        );
-        assert_eq!(
-            panel_position((15.0, 25.0), (360.0, 500.0), (0.0, 0.0, 1920.0, 1040.0)),
-            (8, 8)
-        );
-    }
 }

@@ -94,7 +94,18 @@ export default function TitleBar({ runningCount = 0, dark = true, onToggleTheme 
         )}
       </div>
 
-      <div className="window-controls">
+      <div
+        className="window-controls"
+        onPointerDown={(event) => {
+          // Mouse actions should not leave a keyboard focus ring behind.
+          if (event.button === 0 && event.target.closest('button')) event.preventDefault();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && event.target instanceof HTMLElement) {
+            event.target.blur();
+          }
+        }}
+      >
         <button
           type="button"
           onClick={onToggleTheme}
