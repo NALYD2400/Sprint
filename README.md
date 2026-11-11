@@ -64,17 +64,23 @@ La version 0.5.12 corrige l’écran noir au démarrage et ajoute un contrôle d
 
 ```
 src/
+  main.jsx
+  app/                 # fenêtre : Root, App, coquille, modales globales
+  screens/
+    home/              # tableau de bord
+    projects/          # projets, formulaires, éditeur .env
+    preview/           # aperçu web
+    ports/             # inspecteur de ports
+    terminal/          # logs
+    settings/          # paramètres
+    tray/              # panneau de la zone de notification
   components/
-    layout/      # TitleBar, Sidebar
-    views/       # Home, Projects, Browser, Ports, Terminal, Settings
-    settings/    # sections des paramètres et enregistreur de raccourci
-    modals/      # Modal de base + ConfirmDialog + formulaires
-    ui/          # Modal, ConfirmDialog, Toasts, ContextMenu, Toggle...
-  hooks/
-    useTauriIPC.js  # état projets, logs batchés, métriques, auto-restart
-    useServerOperations.js # état partagé des lancements/arrêts/redémarrages
-  services/      # actions serveur, préférences, stockage, thème
-  styles/        # base commune puis styles de chaque surface
+    layout/            # TitleBar, Sidebar
+    modals/            # palette, aide, mise à jour
+    ui/                # boutons, toasts, menus, graphiques
+  hooks/               # projets, logs, métriques, opérations serveur
+  lib/                 # Tauri, actions serveur, préférences, thème
+  styles/
 src-tauri/src/
   lib.rs             # état de l'app, cycle de vie, commandes projets/serveurs
   process_manager.rs # spawn/kill des process + streaming logs
@@ -82,7 +88,7 @@ src-tauri/src/
   port_inspector.rs  # scan des ports TCP (API native) + arrêt protégé
   updater.rs         # téléchargement vérifié (SHA-256) et installation des mises à jour
   env_files.rs       # lecture/écriture des fichiers .env
-  tunnel.rs          # tunnels localtunnel
+  tunnel.rs          # tunnels localtunnel, un par port, arrêt explicite
   shortcut.rs        # raccourci global d'affichage de la fenêtre
   system.rs          # intégrations Windows (VS Code, explorateur, notifications, autostart)
   config_store.rs    # persistance atomique (tmp + rename, quarantaine)

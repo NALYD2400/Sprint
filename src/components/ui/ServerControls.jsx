@@ -1,7 +1,7 @@
 import React from 'react';
 import { Play, Square, RotateCw, Loader2 } from 'lucide-react';
 import useServerOperations from '../../hooks/useServerOperations';
-import { performServerAction } from '../../services/serverActions';
+import { performServerAction } from '../../lib/serverActions';
 
 export default function ServerControls({ project, server, compact = false, nameInLabel = false }) {
   const getOperation = useServerOperations();

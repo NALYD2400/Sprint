@@ -94,6 +94,13 @@ fn collect_metrics(
     }
 }
 
+#[derive(Clone, Serialize)]
+struct GuardRestart {
+    server_id: String,
+    ram_mb: f64,
+    limit_mb: u32,
+}
+
 pub fn start_metrics_poller(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let sys = Arc::new(Mutex::new(System::new_with_specifics(
@@ -110,7 +117,7 @@ pub fn start_metrics_poller(app: AppHandle) {
             };
             let active_pids = state.lock().process_manager.get_active_pids();
 
-            let mut to_restart: Vec<(String, u32)> = Vec::new();
+            let mut to_restart: Vec<GuardRestart> = Vec::new();
 
             let metrics = collect_metrics(&mut sys.lock(), &active_pids);
 
@@ -130,7 +137,11 @@ pub fn start_metrics_poller(app: AppHandle) {
                                     });
                                     if cooldown_ok {
                                         restarts.insert(srv.id.clone(), now);
-                                        to_restart.push((srv.id.clone(), m.pid));
+                                        to_restart.push(GuardRestart {
+                                            server_id: srv.id.clone(),
+                                            ram_mb: m.ram_mb,
+                                            limit_mb: limit,
+                                        });
                                     }
                                 }
                             }
@@ -141,12 +152,13 @@ pub fn start_metrics_poller(app: AppHandle) {
 
             let _ = app.emit("system-metrics", metrics);
 
-            for (server_id, pid) in to_restart {
+            for restart in to_restart {
                 eprintln!(
-                    "Sprint Auto-Guard: le serveur {} (PID {}) dépasse sa limite RAM — redémarrage.",
-                    server_id, pid
+                    "Sprint Auto-Guard: le serveur {} dépasse sa limite RAM — redémarrage.",
+                    restart.server_id
                 );
-                restart_server(&app, &server_id).await;
+                let _ = app.emit("server-guard-restart", &restart);
+                restart_server(&app, &restart.server_id).await;
             }
         }
     });

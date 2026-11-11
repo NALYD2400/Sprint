@@ -1,9 +1,10 @@
-import { readStoredSetting } from '../../services/settingsStorage';
+import { readStoredSetting } from '../../lib/settingsStorage';
 import React, { useRef } from 'react';
-import { Minus, Square, X } from 'lucide-react';
+import { ArrowUpRight, Minus, Moon, Sun, X } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import logo from '../../../src-tauri/icons/icon.png';
 
-export default function TitleBar({ pageLabel, runningCount = 0 }) {
+export default function TitleBar({ runningCount = 0, dark = true, onToggleTheme }) {
   const maximizePending = useRef(false);
   const getWin = async () => {
     try {
@@ -70,49 +71,48 @@ export default function TitleBar({ pageLabel, runningCount = 0 }) {
       : 'Quitter Sprint complètement';
 
   const ctl =
-    'w-11 h-full flex items-center justify-center text-zinc-500 hover:text-white transition-colors cursor-pointer';
+    'window-control';
 
   return (
     <div
       data-tauri-drag-region
-      className="h-9 shrink-0 w-full flex items-center justify-between pl-4 select-none z-50 text-xs cursor-default"
+      className="h-16 shrink-0 w-full flex items-center justify-between pl-2 select-none z-50 text-xs cursor-default"
     >
-      {/* Tauri handles dragging and double-click maximization on this region. */}
-      <div data-tauri-drag-region className="flex items-center gap-2 pointer-events-none">
-        {pageLabel && <span className="text-zinc-500 text-xs">{pageLabel}</span>}
+      <div data-tauri-drag-region className="flex items-center gap-3 min-w-0 pointer-events-none">
+        <img
+          src={logo}
+          alt=""
+          draggable="false"
+          className="w-11 h-11"
+        />
+        <span className="sprint-wordmark">Sprint<span className="sprint-wordmark-dot">.</span></span>
         {runningCount > 0 && (
-          <span className="ml-2 flex items-center gap-1.5 text-[12px] text-emerald-400">
+          <span className="flex items-center gap-1.5 text-[12px] text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot" />
             {runningCount} en marche
           </span>
         )}
       </div>
 
-      {/* Contrôles fenêtre */}
-      <div className="flex items-stretch h-full">
+      <div className="window-controls">
         <button
           type="button"
-          onClick={handleMinimize}
-          className={`${ctl} hover:bg-white/[0.07]`}
-          title="Réduire"
+          onClick={onToggleTheme}
+          aria-pressed={dark}
+          aria-label={dark ? 'Passer en mode clair' : 'Passer en mode sombre'}
+          title={dark ? 'Passer en mode clair' : 'Passer en mode sombre'}
+          className={ctl}
         >
-          <Minus className="w-3.5 h-3.5" />
+          {dark ? <Sun className="w-[15px] h-[15px]" strokeWidth={1.6} /> : <Moon className="w-[15px] h-[15px]" strokeWidth={1.6} />}
         </button>
-        <button
-          type="button"
-          onClick={handleMaximize}
-          className={`${ctl} hover:bg-white/[0.07]`}
-          title="Agrandir / Restaurer"
-        >
-          <Square className="w-3 h-3" />
+        <button type="button" onClick={handleMinimize} className={ctl} title="Réduire" aria-label="Réduire">
+          <Minus className="w-[15px] h-[15px]" strokeWidth={1.6} />
         </button>
-        <button
-          type="button"
-          onClick={handleClose}
-          className={`${ctl} hover:!bg-red-600 hover:!text-[#fff]`}
-          title={closeTitle}
-        >
-          <X className="w-4 h-4" />
+        <button type="button" onClick={handleMaximize} className={ctl} title="Agrandir / Restaurer" aria-label="Agrandir / Restaurer">
+          <ArrowUpRight className="w-[15px] h-[15px]" strokeWidth={1.6} />
+        </button>
+        <button type="button" onClick={handleClose} className={`${ctl} window-close`} title={closeTitle} aria-label={closeTitle}>
+          <X className="w-[15px] h-[15px]" strokeWidth={1.6} />
         </button>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { DownloadCloud, RefreshCw, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import Modal from '../ui/Modal';
-import { GITHUB_REPO, isNewerVersion } from '../../services/updates';
+import { GITHUB_REPO, isNewerVersion } from '../../lib/updates';
 
 export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
   const [status, setStatus] = useState('checking'); // checking | available | downloading | installing | completed | upToDate | error

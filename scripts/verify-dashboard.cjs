@@ -75,7 +75,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     fs.mkdirSync(path.resolve('test-results'), { recursive: true });
     for (const theme of ['dark', 'light']) {
       await page.evaluate(async (theme) => {
-        const { applyPrefs, loadPrefs } = await import('/src/services/prefs.js');
+        const { applyPrefs, loadPrefs } = await import('/src/lib/prefs.js');
         applyPrefs({ ...loadPrefs(), theme });
       }, theme);
       for (const [width, height] of [[1320, 860], [960, 620]]) {

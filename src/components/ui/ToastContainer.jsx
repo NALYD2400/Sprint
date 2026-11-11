@@ -1,4 +1,4 @@
-import { readStoredSetting } from '../../services/settingsStorage';
+import { readStoredSetting } from '../../lib/settingsStorage';
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, X, Zap, Info } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';

@@ -50,7 +50,7 @@
 .ports-table th.ports-actions { z-index: 2; }
 .ports-page { display: flex; flex-direction: column; height: 100%; min-height: 0; padding-bottom: 0; }
 main#main-content[data-view='ports'] { overflow: hidden; }
-.ports-page > header { flex-shrink: 0; margin-bottom: 12px; }
+.ports-page > header { flex-shrink: 0; margin-bottom: 24px; }
 .ports-tools { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .ports-tools .segmented-control { flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--radius-ctl); }
 .ports-tools input { width: 280px; max-width: 100%; padding-right: 30px; }

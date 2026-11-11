@@ -148,14 +148,14 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === 'http://localhost:3001/', 'remembered URL is validated when loading');
 
     const settings = await page.evaluate(async () => {
-      const { readStoredSetting, writeStoredSetting } = await import('/src/services/settingsStorage.js');
+      const { readStoredSetting, writeStoredSetting } = await import('/src/lib/settingsStorage.js');
       localStorage.removeItem('sprint_cfg_cleanansi');
       localStorage.setItem('portly_cfg_cleanansi', 'false');
       const old = readStoredSetting('clean_ansi_logs');
       writeStoredSetting('clean_ansi_logs', true);
       return { old, sprint: localStorage.getItem('sprint_cfg_cleanansi'), portly: localStorage.getItem('portly_cfg_cleanansi') };
     });
-    check(settings.old === 'false' && settings.sprint === 'true' && settings.portly === 'true', 'legacy preferences are read and both key generations remain synchronized');
+    check(settings.old === 'false' && settings.sprint === 'true' && settings.portly === 'false', 'legacy preferences are still read and new writes stay on sprint keys');
     await page.evaluate(() => localStorage.setItem('sprint_preview_prefs', JSON.stringify({ serverId: 'removed', url: 'javascript:alert(1)', mode: 'unknown', width: -1 })));
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Tableau de bord', exact: true }).waitFor();
@@ -259,7 +259,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await emit({ server_id: 'server3', state: 'stopped', intentional: true });
     await openCommands('3000');
     await page.evaluate(async () => {
-      const { applyPrefs, loadPrefs } = await import('/src/services/prefs.js');
+      const { applyPrefs, loadPrefs } = await import('/src/lib/prefs.js');
       applyPrefs({ ...loadPrefs(), theme: 'dark' });
     });
     await page.setViewportSize({ width: 960, height: 620 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useId } from 'react';
+import React, { useEffect, useRef, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -6,6 +6,23 @@ const FOCUSABLE_SELECTOR =
   'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
 const modalStack = [];
 let originalOverflow;
+
+// Returning focus after Escape should not draw a new keyboard ring.
+// Tab resumes the usual visible focus indication.
+function restoreDialogFocus(element) {
+  const cleanup = () => {
+    element.removeAttribute('data-modal-focus-restored');
+    element.removeEventListener('blur', cleanup);
+    window.removeEventListener('keydown', onKeyDown, true);
+  };
+  const onKeyDown = (event) => {
+    if (event.key === 'Tab') cleanup();
+  };
+  element.setAttribute('data-modal-focus-restored', '');
+  element.addEventListener('blur', cleanup, { once: true });
+  window.addEventListener('keydown', onKeyDown, true);
+  element.focus({ preventScroll: true });
+}
 
 /**
  * Socle unique pour toutes les modals de l'app.
@@ -23,7 +40,22 @@ export default function Modal({
   labelledBy,
   panelClassName = '',
   backdropClassName = '',
+  animateExit = false,
 }) {
+  const [retained, setRetained] = useState(isOpen);
+  useEffect(() => {
+    if (isOpen) {
+      setRetained(true);
+      return undefined;
+    }
+    if (!animateExit || document.documentElement.dataset.motion === 'reduce') {
+      setRetained(false);
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => setRetained(false), 750);
+    return () => window.clearTimeout(timeout);
+  }, [isOpen, animateExit]);
+
   const panelRef = useRef(null);
   const backdropRef = useRef(null);
   const titleId = useId();
@@ -100,18 +132,21 @@ export default function Modal({
       if (index !== -1) modalStack.splice(index, 1);
       if (!modalStack.length) document.body.style.overflow = originalOverflow;
       if (previouslyFocused?.isConnected && (!modalStack.length || modalStack.at(-1).contains(previouslyFocused))) {
-        previouslyFocused.focus();
+        restoreDialogFocus(previouslyFocused);
       }
     };
   }, [isOpen, dismissible, labelledBy, titleId]);
 
-  if (!isOpen) return null;
+  if (!isOpen && (!animateExit || !retained)) return null;
 
   return createPortal(
     <div
       ref={backdropRef}
       role="dialog"
-      aria-modal="true"
+      aria-modal={isOpen ? "true" : undefined}
+      aria-hidden={!isOpen || undefined}
+      inert={!isOpen || undefined}
+      data-closing={!isOpen || undefined}
       aria-labelledby={labelledBy}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && dismissible) onClose();
@@ -122,6 +157,9 @@ export default function Modal({
     >
       <div
         ref={panelRef}
+        onAnimationEnd={(event) => {
+          if (!isOpen && event.target === event.currentTarget) setRetained(false);
+        }}
         className={`modal-panel cursor-default animate-scaleUp ${maxWidth} ${panelClassName}`}
       >
         {showCloseButton && (

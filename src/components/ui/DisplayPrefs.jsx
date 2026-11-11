@@ -1,8 +1,7 @@
 import React from 'react';
-import { Sun, Moon, MonitorSmartphone, Type, Zap } from 'lucide-react';
-import { THEMES, TEXT_SIZES } from '../../services/prefs';
-
-const THEME_ICONS = { system: MonitorSmartphone, dark: Moon, light: Sun };
+import { Type, Zap } from 'lucide-react';
+import { TEXT_SIZES } from '../../lib/prefs';
+import SettingRow from './SettingRow';
 
 function Segmented({ label, value, options, onChange, renderOption }) {
   return (
@@ -65,31 +64,16 @@ export default function DisplayPrefs({ prefs, onChange }) {
           Affichage
         </h3>
         <p className="text-xs text-zinc-400 mt-1">
-          Adaptez Sprint à votre confort. Les changements s’appliquent tout de suite.
+          Les couleurs suivent le logo. Le soleil, à côté des boutons de la fenêtre, passe du sombre au clair.
         </p>
       </div>
 
-      <div className="space-y-2">
-        <div className="text-[13px] font-medium text-zinc-200">Thème</div>
-        <Segmented
-          label="Thème"
-          value={prefs.theme}
-          options={THEMES}
-          onChange={(theme) => onChange({ theme })}
-          renderOption={(opt) => {
-            const Icon = THEME_ICONS[opt.id];
-            return (
-              <>
-                <Icon className="w-4 h-4" />
-                {opt.label}
-              </>
-            );
-          }}
-        />
-        <p className="text-[12px] text-zinc-500">
-          « Automatique » suit le réglage clair ou sombre de Windows.
-        </p>
-      </div>
+      <SettingRow
+        title="Mode sombre"
+        description="Fond graphite, lueurs menthe et violettes."
+        checked={prefs.theme !== 'light'}
+        onToggle={(dark) => onChange({ theme: dark ? 'dark' : 'light' })}
+      />
 
       <div className="space-y-2">
         <div className="text-[13px] font-medium text-zinc-200 flex items-center gap-2">
@@ -109,16 +93,15 @@ export default function DisplayPrefs({ prefs, onChange }) {
         </div>
         <Segmented
           label="Animations"
-          value={prefs.reduceMotion}
+          value={prefs.reduceMotion === 'on' ? 'on' : 'off'}
           options={[
-            { id: 'system', label: 'Comme Windows' },
             { id: 'off', label: 'Activées' },
             { id: 'on', label: 'Réduites' },
           ]}
           onChange={(reduceMotion) => onChange({ reduceMotion })}
         />
         <p className="text-[12px] text-zinc-500">
-          Réduire les animations aide en cas de gêne visuelle ou d’ordinateur lent.
+          Le menu et les changements de page restent en mouvement lent. « Réduites » les coupe.
         </p>
       </div>
     </section>

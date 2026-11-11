@@ -1,4 +1,22 @@
 /* Command search uses the same restrained rows as the workspace. */
+@keyframes command-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.modal-backdrop.command-palette-backdrop {
+  animation: command-backdrop-in 0.72s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.modal-panel.command-palette-panel {
+  animation: sprint-page-in 0.72s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.command-palette-backdrop[data-closing='true'] {
+  pointer-events: none;
+  animation-direction: reverse;
+}
+.command-palette-backdrop[data-closing='true'] .command-palette-panel {
+  animation-direction: reverse;
+}
+
 .command-palette-backdrop {
   background: rgba(0, 0, 0, 0.6);
 }

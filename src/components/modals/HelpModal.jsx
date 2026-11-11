@@ -39,6 +39,15 @@ export default function HelpModal({ isOpen, onClose }) {
           </button>
         </div>
 
+        <HelpContent />
+      </div>
+    </Modal>
+  );
+}
+
+export function HelpContent() {
+  return (
+    <>
         <h3 className="mt-6 flex items-center gap-2 text-sm font-semibold text-zinc-100">
           <Keyboard className="w-4 h-4 text-zinc-500" /> Raccourcis clavier
         </h3>
@@ -66,7 +75,6 @@ export default function HelpModal({ isOpen, onClose }) {
             </div>
           ))}
         </dl>
-      </div>
-    </Modal>
+    </>
   );
 }

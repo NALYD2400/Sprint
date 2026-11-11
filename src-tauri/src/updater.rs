@@ -21,6 +21,22 @@ const MAX_CHECKSUMS_BYTES: usize = 64 * 1024;
 /// dans l'environnement (voir `install_update_and_relaunch_cmd`).
 const UPDATE_SCRIPT: &str = "Start-Sleep -Seconds 2; $inst = $env:SPRINT_INSTALLER; $exe = $env:SPRINT_EXE; try { $p = Start-Process -FilePath $inst -ArgumentList '/S' -PassThru -ErrorAction Stop; $p.WaitForExit() } catch { Start-Process -FilePath $inst -ArgumentList '/S' -Verb RunAs -Wait }; Remove-Item -LiteralPath (Split-Path $inst) -Recurse -Force -ErrorAction SilentlyContinue; if (Test-Path $exe) { Start-Process -FilePath $exe }";
 
+/// URL d'entrée : uniquement une release du dépôt Sprint. Les hôtes de fichiers
+/// GitHub ne sont acceptés qu'en redirection (voir `is_allowed_update_url`).
+fn is_sprint_release_url(url: &str) -> bool {
+    match reqwest::Url::parse(url) {
+        Ok(parsed) => {
+            parsed.scheme() == "https"
+                && parsed.host_str() == Some("github.com")
+                && parsed
+                    .path()
+                    .to_ascii_lowercase()
+                    .starts_with("/nalyd2400/sprint/releases/")
+        }
+        Err(_) => false,
+    }
+}
+
 fn is_allowed_update_url(url: &str) -> bool {
     match reqwest::Url::parse(url) {
         Ok(parsed) => {
@@ -188,8 +204,8 @@ async fn fetch_verified_installer(
 
 #[tauri::command]
 pub async fn download_update_cmd(app: AppHandle, url: String) -> Result<String, String> {
-    if !is_allowed_update_url(&url) {
-        return Err("URL de téléchargement refusée : seules les releases GitHub officielles de Sprint sont autorisées.".into());
+    if !is_sprint_release_url(&url) {
+        return Err("URL de téléchargement refusée : seules les releases GitHub de NALYD2400/Sprint sont autorisées.".into());
     }
     let parsed = reqwest::Url::parse(&url).map_err(|e| format!("URL invalide: {}", e))?;
     let client = update_http_client()?;
@@ -278,7 +294,10 @@ pub async fn install_update_and_relaunch_cmd(
 
 #[cfg(test)]
 mod tests {
-    use super::{expected_sha256, installer_file_name, is_allowed_update_url, UPDATE_SCRIPT};
+    use super::{
+        expected_sha256, installer_file_name, is_allowed_update_url, is_sprint_release_url,
+        UPDATE_SCRIPT,
+    };
 
     #[test]
     fn update_script_never_embeds_paths() {
@@ -302,6 +321,20 @@ mod tests {
         assert_eq!(expected_sha256("abc  Sprint_setup.exe", "Sprint_setup.exe"), None);
         assert_eq!(expected_sha256(&format!("{}  Sprint_setup.exe", "g".repeat(64)), "Sprint_setup.exe"), None);
         assert_eq!(expected_sha256(HASH, "Sprint_setup.exe"), None);
+    }
+
+    #[test]
+    fn download_requires_the_sprint_repository() {
+        assert!(is_sprint_release_url(
+            "https://github.com/NALYD2400/Sprint/releases/download/v0.5.14/Sprint_0.5.14_x64-setup.exe"
+        ));
+        assert!(!is_sprint_release_url(
+            "https://github.com/owner/repo/releases/download/v1/a.exe"
+        ));
+        assert!(!is_sprint_release_url(
+            "https://objects.githubusercontent.com/github.com/NALYD2400/Sprint/a.exe"
+        ));
+        assert!(!is_sprint_release_url("https://github.com/NALYD2400/Sprint/archive/refs/heads/main.zip"));
     }
 
     #[test]

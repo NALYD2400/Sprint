@@ -4,7 +4,7 @@
   min-height: 480px;
   display: flex;
   flex-direction: column;
-  max-width: 100%;
+  max-width: 72rem;
   padding-bottom: 0;
 }
 .preview-toolbar {
@@ -103,30 +103,17 @@
   border: 0;
   border-radius: 0;
 }
-main#main-content[data-view='browser'],
-main#main-content[data-view='terminal'] {
-  padding: 12px 16px 8px;
-}
-[data-sidebar-collapsed='true']
-  main#main-content:is([data-view='browser'], [data-view='terminal']) {
-  padding-left: 8px;
-}
 .preview-page,
 .logs-page {
   min-height: 0;
 }
 .preview-page > header,
 .logs-page > header {
-  margin-bottom: 8px;
+  margin-bottom: 24px;
   flex-direction: row;
   align-items: center;
   flex-shrink: 0;
   gap: 8px;
-}
-.preview-page .page-title,
-.logs-page .page-title {
-  font-size: 16px;
-  line-height: 24px;
 }
 .preview-page > header > div:last-child { flex: 1; justify-content: flex-end; gap: 6px; }
 @container workspace (max-width: 880px) {

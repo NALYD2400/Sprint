@@ -63,8 +63,7 @@ pub struct ServerConfig {
     pub name: String,
     pub command: String,
     pub port: u16,
-    pub state: String, // "stopped", "running", "error"
-    pub healthy: bool,
+    pub state: String,
     #[serde(default)]
     pub env: std::collections::HashMap<String, String>,
     #[serde(rename = "ramLimit", default)]
@@ -77,7 +76,6 @@ pub struct ProjectConfig {
     pub name: String,
     pub root: String,
     pub color: String,
-    pub icon: String,
     #[serde(default)]
     pub framework: Option<String>,
     #[serde(default)]
@@ -168,7 +166,6 @@ pub fn load_projects() -> Vec<ProjectConfig> {
                     for prj in &mut projects {
                         for srv in &mut prj.servers {
                             srv.state = "stopped".to_string();
-                            srv.healthy = false;
                             if srv.ram_limit == Some(0) {
                                 srv.ram_limit = None;
                             }

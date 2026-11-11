@@ -76,7 +76,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     };
     const cmds = () => page.evaluate(() => window.__commands);
     const setTheme = (theme) => page.evaluate(async (theme) => {
-      const { loadPrefs, applyPrefs } = await import('/src/services/prefs.js');
+      const { loadPrefs, applyPrefs } = await import('/src/lib/prefs.js');
       applyPrefs({ ...loadPrefs(), theme });
     }, theme);
     const emit = (name, payload) =>
@@ -152,7 +152,6 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       check(Math.abs(after.y - initial.y) < 0.5, 'settings independent scroll ' + name);
     }
     await nav.getByRole('button', { name: 'Apparence', exact: true }).click();
-    await page.getByRole('switch', { name: 'Arrière-plan animé', exact: true }).click();
     await page.waitForTimeout(200);
     const draws = await page.evaluate(() => window.__canvasDraws);
     check(draws > 0, 'light-theme background renders');
@@ -172,29 +171,8 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       (await page.evaluate(() => window.__canvasDraws)) === draws,
       'light-theme reduced-motion canvas stays static',
     );
-    const setRange = async (name, value) => {
-      await page.getByRole('slider', { name, exact: true }).fill(String(value));
-    };
-    await setRange('Intensité', 70);
-    await setRange('Flou', 50);
-    await setRange('Vitesse', 150);
-    check(await page.evaluate(() => {
-      const saved = JSON.parse(localStorage.getItem('sprint_ui_prefs'));
-      return saved.backgroundIntensity === 70 && saved.backgroundBlur === 50 && saved.backgroundSpeed === 150
-        && getComputedStyle(document.querySelector('[data-bg-canvas]')).opacity === '0.7'
-        && getComputedStyle(document.querySelector('[data-bg-canvas] canvas')).filter === 'blur(50px)';
-    }), 'background controls apply immediately and are saved');
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: 'Tableau de bord', exact: true }).waitFor();
-    await page.keyboard.press('Control+,');
-    await page.getByRole('slider', { name: 'Intensité', exact: true }).waitFor();
-    check(await page.getByRole('slider', { name: 'Intensité', exact: true }).inputValue() === '70',
-      'background preference survives reload');
     await page.screenshot({ path: art + '/sprint-background-light.png' });
-    await setRange('Intensité', 0);
-    check(await page.locator('[data-bg-canvas] canvas').count() === 0, 'zero intensity stops rendering');
-    await setRange('Intensité', 70);
-    await page.getByRole('radio', { name: 'Sombre', exact: true }).click();
+    await page.getByRole('button', { name: 'Passer en mode sombre', exact: true }).click();
     await page.waitForTimeout(100);
     const reducedDraws = await page.evaluate(() => window.__canvasDraws);
     await page.waitForTimeout(200);
@@ -208,14 +186,9 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       (await page.evaluate(() => window.__canvasDraws)) > reducedDraws,
       'canvas resumes when animations are enabled',
     );
-    await setRange('Vitesse', 0);
-    await page.waitForTimeout(100);
-    const staticDraws = await page.evaluate(() => window.__canvasDraws);
-    await page.waitForTimeout(150);
-    check(await page.evaluate(() => window.__canvasDraws) === staticDraws, 'zero speed stops animation');
     check(await page.evaluate(() => document.documentElement.dataset.theme) === 'dark',
-      'background controls preserve dark theme');
-    await page.getByRole('switch', { name: 'Barre latérale compacte', exact: true }).click();
+      'theme stays dark with the animated background');
+    await page.getByRole('button', { name: 'Agrandir le menu', exact: true }).click();
     await page.getByRole('radio', { name: 'Confortable', exact: true }).click();
     await page.waitForTimeout(100);
     check(await page.evaluate(() => {
@@ -224,41 +197,31 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       return Math.abs(bounds.width / 1.12 - canvas.width) < 2
         && bounds.left < 0 && bounds.right > innerWidth;
     }), 'background resizes correctly with comfortable text and expanded sidebar');
-    await page.locator('.background-controls').scrollIntoViewIfNeeded();
     await page.screenshot({ path: art + '/sprint-background-dark.png' });
     await page.getByRole('radio', { name: 'Standard', exact: true }).click();
-    await page.getByRole('switch', { name: 'Barre latérale compacte', exact: true }).click();
-    await setRange('Vitesse', 100);
-    await page.getByRole('radio', { name: 'Clair', exact: true }).click();
+    await page.getByRole('button', { name: 'Réduire le menu', exact: true }).click();
+    await page.getByRole('button', { name: 'Passer en mode clair', exact: true }).click();
     await page.getByRole('radio', { name: 'Réduites', exact: true }).click();
-    await page.getByRole('switch', { name: 'Arrière-plan animé', exact: true }).click();
     await page.screenshot({ path: art + '/sprint-settings-stable.png' });
-    check(await nav.getByRole('button').count() === 6, 'settings have six focused sections');
+    check(await nav.getByRole('button').count() === 7, 'settings include the dedicated help section');
+    await nav.getByRole('button', { name: 'Aide et raccourcis', exact: true }).click();
+    check(await page.getByRole('heading', { name: 'Raccourcis clavier', exact: true }).isVisible(), 'help is available in settings');
+    check(await page.locator('.settings-save-status').count() === 0, 'help section has no autosave message');
     await nav.getByRole('button', { name: 'Serveurs & logs', exact: true }).click();
     const ansiSetting = page.getByRole('switch', { name: 'Nettoyer les codes ANSI', exact: true });
-    check(!await ansiSetting.isVisible(), 'technical log options are collapsed by default');
+    check(await ansiSetting.isVisible(), 'log options stay with the other server settings');
     check(await page.getByRole('switch', { name: 'Relancer après un crash', exact: true }).isVisible(),
       'crash recovery remains directly available');
-    await page.locator('.settings-disclosure > summary').click();
-    check(await ansiSetting.isVisible(), 'log options remain accessible');
     await ansiSetting.click();
     await page.waitForFunction(() => localStorage.getItem('sprint_cfg_cleanansi') === 'false');
     await ansiSetting.click();
     await page.waitForFunction(() => localStorage.getItem('sprint_cfg_cleanansi') === 'true');
     await nav.getByRole('button', { name: 'À propos', exact: true }).click();
     check(await page.locator('.settings-save-status').count() === 0, 'read-only about section has no autosave message');
-    check(!await page.getByRole('button', { name: 'Copier le skill', exact: true }).isVisible(),
-      'assistant tools stay out of the main settings flow');
-    await page.locator('.settings-disclosure > summary').click();
-    await page.getByRole('button', { name: 'Copier le skill', exact: true }).click();
-    const skill = await page.evaluate(() => window.__clipboard);
-    check(skill.includes('name: sprint') && await page.getByRole('button', { name: 'Copié', exact: true }).isVisible(),
-      'assistant skill can still be copied with inline feedback');
-    const skillDownloadEvent = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Télécharger', exact: true }).click();
-    const skillDownload = await skillDownloadEvent;
-    check(skillDownload.suggestedFilename() === 'SKILL.md'
-      && fs.readFileSync(await skillDownload.path(), 'utf8') === skill, 'assistant download preserves the complete skill');
+    check(await page.getByRole('button', { name: 'Mises à jour', exact: true }).isVisible(),
+      'updates stay available from about');
+    check(await page.getByRole('button', { name: 'Copier le skill' }).count() === 0,
+      'assistant skill is not a setting');
     for (const theme of ['light', 'dark']) {
       await setTheme(theme);
       await page.screenshot({ path: art + '/sprint-settings-about-' + theme + '.png' });
@@ -272,7 +235,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       localStorage.getItem('portly_cfg_notif_app'),
       localStorage.getItem('sprint_cfg_notif_app'),
     ]);
-    check(storage[0] === 'false' && storage[1] === 'false', 'notification keys synchronized');
+    check(storage[1] === 'false', 'notification preference is stored on the sprint key');
     await nav.getByRole('button', { name: 'Sauvegardes', exact: true }).click();
     let before = (await cmds()).filter((x) => x.cmd === 'save_projects_cmd').length;
     await page
@@ -651,7 +614,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     // Compact window and large text: controls and independent viewports stay usable.
     await page.setViewportSize({width: 960, height: 620});
     await page.evaluate(async () => {
-      const { loadPrefs, applyPrefs } = await import('/src/services/prefs.js');
+      const { loadPrefs, applyPrefs } = await import('/src/lib/prefs.js');
       applyPrefs({...loadPrefs(), textSize: 'xl'});
     });
     for (const [key, name] of [['4', 'ports'], ['5', 'logs'], ['3', 'preview']]) {
@@ -724,7 +687,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     const failedStop = await page.evaluate(async () => {
       window.__failStop = true;
       window.__toasts = [];
-      const { stopProject } = await import('/src/services/serverActions.js');
+      const { stopProject } = await import('/src/lib/serverActions.js');
       const stopped = await stopProject({
         name: 'Test',
         servers: [{ id: 'server1', name: 'Dev', state: 'running' }],

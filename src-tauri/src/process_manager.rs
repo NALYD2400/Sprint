@@ -166,7 +166,6 @@ impl ProcessManager {
         let s_exit = s_id.clone();
         tauri::async_runtime::spawn(async move {
             let exit = child.wait().await;
-            let exited_normally = exit.as_ref().map(|status| status.success()).unwrap_or(false);
             let exit_code = exit.as_ref().ok().and_then(|status| status.code());
             let exit_error = exit.err().map(|error| error.to_string());
             let owns_process = {
@@ -183,7 +182,8 @@ impl ProcessManager {
                     server_id: s_exit,
                     state: "stopped".to_string(),
                     pid: None,
-                    intentional: exited_normally,
+                    // Seul stop_server marque un arrêt demandé. Un code 0 reste inattendu.
+                    intentional: false,
                     exit_code,
                     exit_error,
                 },
