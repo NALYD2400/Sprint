@@ -82,6 +82,7 @@ export default function WorkspaceMain({ shell }) {
             {activeTab === 'browser' && (
               <BrowserView
                 projects={projects}
+                projectIcons={projectIcons}
                 initialServerId={browserTarget.serverId}
                 initialUrl={browserTarget.url}
                 onTargetConsumed={consumeBrowserTarget}
@@ -92,11 +93,12 @@ export default function WorkspaceMain({ shell }) {
               />
             )}
 
-            {activeTab === 'ports' && <PortsView projects={projects} />}
+            {activeTab === 'ports' && <PortsView projects={projects} projectIcons={projectIcons} />}
 
             {activeTab === 'terminal' && (
               <TerminalView
                 projects={projects}
+                projectIcons={projectIcons}
                 initialServerId={selectedTerminalId}
                 onSelectTab={setActiveTab}
               />

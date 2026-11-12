@@ -30,6 +30,7 @@ netstat2 = "0.9"
 sha2 = "0.10"
 parking_lot = "0.12"
 base64 = "0.22.1"
+image = { version = "0.25.10", default-features = false, features = ["png", "ico", "jpeg", "webp"] }
 
 [features]
 default = ["custom-protocol"]

@@ -15,7 +15,7 @@ const MAX_DOCUMENT_BYTES: u64 = 128 * 1024;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectIcon {
-    data_url: String,
+    pub(crate) data_url: String,
 }
 
 fn read_bounded(path: &Path, limit: u64) -> Option<Vec<u8>> {
@@ -137,6 +137,13 @@ fn configured_icons(root: &Path, config_file: &str, prefix: &str) -> Vec<PathBuf
 }
 
 pub(crate) fn detect_project_icon(project_root: &Path) -> Option<ProjectIcon> {
+    load_project_icon(project_root, Some)
+}
+
+pub(crate) fn load_project_icon<T>(
+    project_root: &Path,
+    mut convert: impl FnMut(ProjectIcon) -> Option<T>,
+) -> Option<T> {
     let root = project_root.canonicalize().ok()?;
     if !root.is_dir() {
         return None;
@@ -187,7 +194,7 @@ pub(crate) fn detect_project_icon(project_root: &Path) -> Option<ProjectIcon> {
     );
     candidates
         .into_iter()
-        .find_map(|candidate| image_data(&root, &candidate))
+        .find_map(|candidate| image_data(&root, &candidate).and_then(&mut convert))
 }
 
 #[tauri::command]
@@ -287,5 +294,17 @@ mod tests {
     #[test]
     fn project_icons_handle_missing_project() {
         assert!(detect_project_icon(Path::new("sprint-nonexistent-logo-test")).is_none());
+    }
+
+    #[test]
+    fn native_menu_can_fall_back_to_a_supported_local_image() {
+        let fixture = Fixture::new();
+        fixture.write("index.html", br#"<link rel="icon" href="logo.svg">"#);
+        fixture.write("public/logo.svg", b"<svg></svg>");
+        fixture.write("public/favicon.png", include_bytes!("../icons/32x32.png"));
+        let native = load_project_icon(&fixture.0, |icon| {
+            icon.data_url.starts_with("data:image/png").then_some(icon)
+        }).unwrap();
+        assert!(native.data_url.starts_with("data:image/png"));
     }
 }

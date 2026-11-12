@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { RefreshCw, ExternalLink, Search, ShieldAlert, XCircle, Copy, MoreHorizontal, X, Folder, AppWindow, Shield } from 'lucide-react';
+import { RefreshCw, ExternalLink, Search, ShieldAlert, XCircle, Copy, MoreHorizontal, X, Folder, AppWindow, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { triggerToast } from '../../lib/toastBus';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import PageHeader from '../../components/ui/PageHeader';
 import SprintNavIcon from '../../components/layout/SprintNavIcon';
 import FloatingMenu from '../../components/ui/FloatingMenu';
+import ProjectAvatar from '../../components/ui/ProjectAvatar';
 import { portAccess, portCategory, projectWebUrl } from './portPresentation';
 import { markManualStop, unmarkManualStop } from '../../lib/serverLifecycle';
 
@@ -60,7 +61,7 @@ function PortActions({ entry, project, category, onKill }) {
   );
 }
 
-export default function PortsView({ projects = [] }) {
+export default function PortsView({ projects = [], projectIcons = {} }) {
   const [ports, setPorts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -71,6 +72,15 @@ export default function PortsView({ projects = [] }) {
   const fetchingRef = useRef(false);
   const [sort, setSort] = useState({ key: 'priority', ascending: true });
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [showTools, setShowTools] = useState(true);
+  const [toolsHeight, setToolsHeight] = useState(0);
+  const toolsRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setToolsHeight(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height));
+    if (toolsRef.current) observer.observe(toolsRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const fetchPorts = useCallback(async () => {
     if (fetchingRef.current) return;
@@ -146,6 +156,7 @@ export default function PortsView({ projects = [] }) {
       if (srv.port && srv.state === 'running') {
         sprintServersMap[srv.port] = {
           id: srv.id,
+          project: p,
           projectName: p.name,
           projectColor: p.color || 'var(--accent-color)',
           serverName: srv.name,
@@ -205,16 +216,22 @@ export default function PortsView({ projects = [] }) {
     <div className="page ports-page">
       <PageHeader
         title="Ports" icon={<SprintNavIcon name="ports" active />}
-        lead="Identifiez ce qui occupe un port et retrouvez vos serveurs."
         actions={
-          <button className="btn" onClick={handleManualRefresh} disabled={loading}>
+          <><button className="btn" onClick={handleManualRefresh} disabled={loading}>
             <RefreshCw size={14} className={showSpinner ? 'animate-spin' : ''} />
             Actualiser
           </button>
+          <button type="button" className="icon-button preview-controls-toggle" aria-expanded={showTools}
+            aria-controls="ports-controls" aria-label={showTools ? 'Replier les filtres des ports' : 'Afficher les filtres des ports'}
+            title={showTools ? 'Replier les filtres des ports' : 'Afficher les filtres des ports'} onClick={() => setShowTools((shown) => !shown)}>
+            <SprintNavIcon name="previewControls" active />{showTools ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button></>
         }
       />
-      <div className="ports-tools">
-        <div className="segmented-control" aria-label="Filtrer les ports">
+      <div id="ports-controls" className="workspace-controls-drawer" aria-hidden={!showTools}
+        inert={!showTools ? true : undefined} style={{ height: showTools ? toolsHeight : 0 }}>
+      <div className="ports-tools workspace-toolbar" ref={toolsRef}>
+        <div className="server-filters" role="group" aria-label="Filtrer les ports">
           {filters.map((filter) => (
             <button
               key={filter.id}
@@ -227,24 +244,24 @@ export default function PortsView({ projects = [] }) {
           ))}
         </div>
         <div className="ports-tools-end">
-          <div className="relative">
-            <Search size={14} className="text-zinc-400 absolute left-2.5 top-2.5" />
+          <label className="workspace-search ports-search">
+            <Search size={14} aria-hidden="true" />
             <input
-              className="control-input !pl-8 w-60"
               aria-label="Filtrer les ports"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Port, projet, processus ou PID"
             />
-            {search && <button className="ports-search-clear icon-button" aria-label="Effacer la recherche des ports"
-              onClick={() => setSearch('')}><X size={13} /></button>}
-          </div>
+          </label>
+          {search && <button className="icon-button" aria-label="Effacer la recherche des ports"
+            onClick={() => setSearch('')}><X size={13} /></button>}
           <label className="ports-sort">Tri <select className="control-input" aria-label="Ordre des ports" value={sort.key}
             onChange={(event) => setSort({ key: event.target.value, ascending: true })}>
             <option value="priority">Projets en premier</option><option value="port">Numéro de port</option>
             <option value="process_name">Processus</option><option value="pid">PID</option>
           </select></label>
         </div>
+      </div>
       </div>
       <div className="ports-summary">
         <span>{filteredPorts.length} {filteredPorts.length === 1 ? 'port affiché' : 'ports affichés'}
@@ -257,7 +274,7 @@ export default function PortsView({ projects = [] }) {
         </div>
       )}
       {filteredPorts.length === 0 ? (
-        <div className="empty-state">
+        <div key={filterType} className="empty-state ports-filter-transition">
           <p className="text-zinc-100">{loading ? 'Recherche des ports…' : 'Aucun port trouvé'}</p>
           <p className="text-xs mt-2">
             {search || filterType !== 'all'
@@ -277,7 +294,7 @@ export default function PortsView({ projects = [] }) {
           )}
         </div>
       ) : (
-        <div className="ports-table-scroll" onScroll={(event) => {
+        <div key={filterType} className="ports-table-scroll ports-filter-transition" onScroll={(event) => {
           const container = event.currentTarget;
           container.style.setProperty('--ports-scroll-offset', `${container.scrollTop}px`);
         }}>
@@ -315,13 +332,16 @@ export default function PortsView({ projects = [] }) {
                   <tr key={entry.protocol + '-' + entry.local_address + '-' + entry.port + '-' + entry.pid}>
                     <td><strong className="port-number">:{entry.port}</strong><span className="port-detail">{entry.protocol || 'TCP'}</span></td>
                     <td className="port-process">
-                      <span className="port-process-title" title={match?.projectName || entry.process_name}>
-                        <CategoryIcon size={14} className={match ? 'theme-accent-text' : ''} />
-                        {match?.projectName || entry.process_name || 'Processus inconnu'}
-                      </span>
-                      <span className="port-detail" title={match ? match.serverName + ' · ' + entry.process_name : category === 'windows' ? 'Processus Windows identifié' : 'Application ou service non associé à un projet'}>
-                        {match ? match.serverName + ' · ' + entry.process_name : category === 'windows' ? 'Windows' : 'Application / service'}
-                      </span>
+                      <div className="port-identity">
+                        {match ? <ProjectAvatar project={match.project} image={projectIcons[match.project.id]} small />
+                          : <span className="port-category-icon"><CategoryIcon size={15} /></span>}
+                        <div className="port-identity-text">
+                          <span className="port-process-title" title={match?.projectName || entry.process_name}>{match?.projectName || entry.process_name || 'Processus inconnu'}</span>
+                          <span className="port-detail" title={match ? match.serverName + ' · ' + entry.process_name : category === 'windows' ? 'Processus Windows identifié' : 'Application ou service non associé à un projet'}>
+                            {match ? match.serverName + ' · ' + entry.process_name : category === 'windows' ? 'Windows' : 'Application / service'}
+                          </span>
+                        </div>
+                      </div>
                     </td>
                     <td className="font-mono text-xs text-zinc-400">{entry.pid ?? '—'}</td>
                     <td>

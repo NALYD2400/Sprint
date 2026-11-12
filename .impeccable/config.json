@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "createdAt": "2026-10-25T23:18:34.100Z",
+        "reason": "Agent: existing monospace design token is used for server commands, ports, durations and chart measurements in this developer tool; preserve the established interface."
+      }
+    ]
+  }
+}

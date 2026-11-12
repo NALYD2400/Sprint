@@ -1,5 +1,5 @@
 import { readStoredSetting } from '../../lib/settingsStorage';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useServerLogs } from '../../hooks/useServerLogs';
 import {
   Terminal,
@@ -14,6 +14,11 @@ import {
   ArrowRight,
   Loader2,
   X,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Square,
 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import SprintNavIcon from '../../components/layout/SprintNavIcon';
@@ -21,13 +26,15 @@ import EmptyState from '../../components/ui/EmptyState';
 import useServerOperations from '../../hooks/useServerOperations';
 import { performServerAction } from '../../lib/serverActions';
 import { triggerToast } from '../../lib/toastBus';
+import LogContent from '../../components/ui/LogContent';
+import ProjectAvatar from '../../components/ui/ProjectAvatar';
+import { syncPreviewTabs } from '../preview/previewTabs';
 
 // Nombre max de lignes rendues dans le DOM (fenêtre glissante)
 const MAX_RENDERED_LINES = 500;
 
 const LogLine = React.memo(function LogLine({ entry, lineNumber, showRaw, active }) {
   const { isError, isSuccess, isInfo } = entry;
-  const text = showRaw ? entry.raw : entry.clean;
   return (
     <div
       data-log-id={entry.id}
@@ -45,13 +52,13 @@ const LogLine = React.memo(function LogLine({ entry, lineNumber, showRaw, active
         {lineNumber}
       </span>
       <span className="log-line-level">{isError ? 'Erreur' : isSuccess ? 'Succès' : isInfo ? 'Info' : ''}</span>
-      <span className="flex-1">{text}</span>
+      <span className="flex-1"><LogContent text={entry.raw} interpretAnsi={!showRaw} /></span>
     </div>
   );
 });
 
 // Single Terminal Panel Component
-function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, selector }) {
+function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, selector, showTools }) {
   const { logs, clearLogs } = useServerLogs(server?.id);
   const [filter, setFilter] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
@@ -63,6 +70,22 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
   const pausedAt = useRef(0);
   const copyTimer = useRef(null);
   const scrollRef = useRef(null);
+  const toolsRef = useRef(null);
+  const [toolsHeight, setToolsHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (showTools && toolsRef.current) {
+      const height = toolsRef.current.scrollHeight;
+      if (height > 0) setToolsHeight(height);
+    }
+  }, [showTools]);
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => {
+      const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+      if (height > 0) setToolsHeight(height);
+    });
+    if (toolsRef.current) observer.observe(toolsRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Réglage utilisateur : nettoyage ANSI des logs
   const showRawAnsi = readStoredSetting('clean_ansi_logs') === 'false';
@@ -166,10 +189,13 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
 
   return (
     <div className="terminal-panel">
+      <div id={`terminal-controls-${titlePrefix === 'Console 2' ? 2 : 1}`} className="workspace-controls-drawer" aria-hidden={!showTools} inert={!showTools ? true : undefined}
+        style={{ height: showTools ? toolsHeight : 0 }}>
+      <div className="terminal-controls-content" ref={toolsRef}>
       {selector}
-      {/* Panel Header */}
       <div className="terminal-toolbar">
-        <div className="terminal-actions flex items-center gap-1.5 flex-wrap w-full">
+        <div className="terminal-actions">
+          <div className="terminal-filters">
           <select
             className="control-input"
             aria-label={`Niveau des logs · ${titlePrefix}`}
@@ -194,6 +220,8 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
           </div>
           {(filter || level !== 'all') && <button className="icon-button" title="Réinitialiser les filtres"
             aria-label={`Réinitialiser les filtres · ${titlePrefix}`} onClick={() => { setFilter(''); setLevel('all'); }}><X size={14} /></button>}
+          </div>
+          <div className="terminal-tools">
           <button className="quiet-button log-next-error" onClick={nextError}
             disabled={!filteredLogs.some((entry) => entry.isError)} title="Aller à l’erreur suivante dans les résultats"
             aria-label={`Erreur suivante · ${titlePrefix}`}><ArrowDown size={13} /> Erreur suivante</button>
@@ -239,7 +267,10 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
+          </div>
         </div>
+      </div>
+      </div>
       </div>
 
       {/* Terminal Log Screen */}
@@ -372,7 +403,7 @@ function ConsoleSelector({ server, servers, number, otherId, onChange, onStart, 
   );
 }
 
-export default function TerminalView({ projects = [], initialServerId, onSelectTab }) {
+export default function TerminalView({ projects = [], projectIcons = {}, initialServerId, onSelectTab }) {
   const [showAllServers, setShowAllServers] = useState(
     () => readStoredSetting('hide_stopped_servers') === 'false',
   );
@@ -381,6 +412,7 @@ export default function TerminalView({ projects = [], initialServerId, onSelectT
       projects.flatMap((project) =>
         (project.servers || []).map((server) => ({
           ...server,
+          project,
           projectId: project.id,
           projectName: project.name,
           projectRoot: project.root,
@@ -392,11 +424,55 @@ export default function TerminalView({ projects = [], initialServerId, onSelectT
   const [activeServerId, setActiveServerId] = useState(initialServerId || null);
   const [splitServerId, setSplitServerId] = useState(null);
   const [isSplitMode, setIsSplitMode] = useState(false);
+  const [showTools, setShowTools] = useState(true);
+  const [openTabs, setOpenTabs] = useState(() => syncPreviewTabs(initialServerId ? [initialServerId] : [], allServers, new Set()));
+  const dismissedTabs = useRef(new Set());
+  const [showTabMenu, setShowTabMenu] = useState(false);
+  const tabMenuRef = useRef(null);
+  const tabListRef = useRef(null);
+  const [tabOverflow, setTabOverflow] = useState({ left: false, right: false });
   const getOperation = useServerOperations();
 
   useEffect(() => {
-    if (initialServerId) setActiveServerId(initialServerId);
+    if (initialServerId) {
+      dismissedTabs.current.delete(initialServerId);
+      setActiveServerId(initialServerId);
+      setOpenTabs((ids) => ids.includes(initialServerId) ? ids : [...ids, initialServerId]);
+    }
   }, [initialServerId]);
+  useEffect(() => {
+    const runningIds = new Set(allServers.filter((item) => item.state === 'running').map((item) => item.id));
+    for (const id of dismissedTabs.current) if (!runningIds.has(id)) dismissedTabs.current.delete(id);
+    setOpenTabs((ids) => {
+      const next = syncPreviewTabs(ids, allServers, dismissedTabs.current);
+      return next.length === ids.length && next.every((id, index) => id === ids[index]) ? ids : next;
+    });
+  }, [allServers]);
+  useEffect(() => {
+    if (!showTabMenu) return undefined;
+    const dismiss = (event) => {
+      if (event.type === 'keydown' ? event.key === 'Escape' : !tabMenuRef.current?.contains(event.target)) setShowTabMenu(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', dismiss);
+    return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', dismiss); };
+  }, [showTabMenu]);
+  const updateTabOverflow = () => {
+    const list = tabListRef.current;
+    if (!list) return;
+    const left = list.scrollLeft > 1;
+    const right = list.scrollLeft + list.clientWidth < list.scrollWidth - 1;
+    setTabOverflow((prev) => prev.left === left && prev.right === right ? prev : { left, right });
+  };
+  useEffect(() => {
+    const list = tabListRef.current;
+    if (!list) return undefined;
+    const observer = new ResizeObserver(updateTabOverflow);
+    observer.observe(list);
+    Array.from(list.children).forEach((child) => observer.observe(child));
+    updateTabOverflow();
+    return () => observer.disconnect();
+  }, [openTabs, allServers.length]);
 
   // Keep an opened console selected after its server stops, so its last logs remain readable.
   const primaryServer =
@@ -411,8 +487,17 @@ export default function TerminalView({ projects = [], initialServerId, onSelectT
     if (primaryId && activeServerId !== primaryId) setActiveServerId(primaryId);
   }, [primaryId, activeServerId]);
   useEffect(() => {
+    if (!primaryId) return;
+    dismissedTabs.current.delete(primaryId);
+    setOpenTabs((ids) => ids.includes(primaryId) ? ids : [...ids, primaryId]);
+  }, [primaryId]);
+  useEffect(() => {
     if (isSplitMode && secondaryId && splitServerId !== secondaryId) setSplitServerId(secondaryId);
   }, [isSplitMode, secondaryId, splitServerId]);
+  useEffect(() => {
+    if (!isSplitMode || !secondaryId || dismissedTabs.current.has(secondaryId)) return;
+    setOpenTabs((ids) => ids.includes(secondaryId) ? ids : [...ids, secondaryId]);
+  }, [isSplitMode, secondaryId]);
 
   const displayServers = allServers.filter(
     (server) =>
@@ -424,6 +509,25 @@ export default function TerminalView({ projects = [], initialServerId, onSelectT
   );
   const handleStartServer = (server) =>
     performServerAction('start', { root: server.projectRoot }, server, { silent: true });
+  const openTab = (id) => {
+    dismissedTabs.current.delete(id);
+    setOpenTabs((ids) => ids.includes(id) ? ids : [...ids, id]);
+    if (isSplitMode && id === secondaryId) setSplitServerId(primaryId);
+    setActiveServerId(id);
+    setShowTabMenu(false);
+  };
+  const openSecondary = (id) => {
+    dismissedTabs.current.delete(id);
+    setOpenTabs((ids) => ids.includes(id) ? ids : [...ids, id]);
+    setSplitServerId(id);
+  };
+  const closeTab = (id) => {
+    if (openTabs.length <= 1) return;
+    const remaining = openTabs.filter((item) => item !== id && allServers.some((server) => server.id === item));
+    dismissedTabs.current.add(id);
+    setOpenTabs(remaining);
+    if (id === primaryId && remaining.length) setActiveServerId(remaining[remaining.length - 1]);
+  };
 
   if (!allServers.length)
     return (
@@ -444,42 +548,105 @@ export default function TerminalView({ projects = [], initialServerId, onSelectT
 
   return (
     <div className="page logs-page">
-      <PageHeader
-        title="Logs" icon={<SprintNavIcon name="terminal" active />}
-        actions={
-          <>
-            <label className="logs-stopped-toggle">
-              <input
-                type="checkbox"
-                checked={showAllServers}
-                onChange={(event) => setShowAllServers(event.target.checked)}
-              />
-              Inclure les arrêtés
-            </label>
-            <button
-              className="quiet-button"
-              onClick={() => setIsSplitMode((value) => !value)}
-              aria-pressed={isSplitMode}
-              disabled={allServers.length < 2}
-              title="Comparer deux flux de logs"
-            >
-              <Columns size={14} /> {isSplitMode ? 'Une console' : 'Deux consoles'}
-            </button>
-          </>
-        }
-      />
+      <header className="page-header preview-header logs-header">
+        <div className="page-header-intro preview-title">
+          <span className="page-header-icon" aria-hidden="true"><SprintNavIcon name="terminal" active /></span>
+          <h1 className="page-title">Logs</h1>
+        </div>
+        <div className="preview-tabs-bar">
+        <div className="preview-tabs-navigation">
+          {(tabOverflow.left || tabOverflow.right) && <button type="button" className="preview-tabs-arrow" aria-label="Onglets de logs précédents" disabled={!tabOverflow.left}
+            onClick={() => tabListRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}><ChevronLeft size={15} /></button>}
+          <div ref={tabListRef} className={`preview-tabs${tabOverflow.left ? ' fade-left' : ''}${tabOverflow.right ? ' fade-right' : ''}`}
+            aria-label="Onglets de logs" onScroll={updateTabOverflow}>
+            {openTabs.map((id) => {
+              const item = allServers.find((candidate) => candidate.id === id);
+              if (!item) return null;
+              const running = item.state === 'running';
+              const pending = !!getOperation(id) || item.state === 'starting';
+              const split = isSplitMode && id === secondaryId;
+              return <div key={id} className={`preview-tab${id === primaryId ? ' is-active' : ''}${split ? ' is-split' : ''}`}>
+                <button type="button" className="preview-tab-select" aria-current={id === primaryId ? 'page' : undefined}
+                  title={`${item.projectName} · ${item.name}${split ? ' · Console 2' : ''}`} onClick={() => openTab(id)}>
+                  <span className="preview-tab-avatar"><ProjectAvatar project={item.project} image={projectIcons[item.projectId]} small />
+                    <span className={`server-avatar-status ${running ? 'is-running' : item.state === 'starting' ? 'is-starting' : item.state === 'error' ? 'is-error' : ''}`} /></span>
+                  <span>{item.name}</span>
+                </button>
+                <button type="button" className={running ? 'preview-tab-stop' : 'preview-tab-start'} disabled={pending}
+                  aria-label={`${running ? 'Arrêter' : 'Lancer'} ${item.projectName} · ${item.name}`}
+                  title={running ? 'Arrêter le serveur' : 'Lancer le serveur'}
+                  onClick={() => { if (!running) openTab(id); performServerAction(running ? 'stop' : 'start', { root: item.projectRoot }, item); }}>
+                  {pending ? <Loader2 size={13} className="animate-spin" /> : running ? <Square size={12} /> : <Play size={12} />}
+                </button>
+                {openTabs.length > 1 && <button type="button" className="preview-tab-close" aria-label={`Fermer les logs ${item.projectName} · ${item.name}`} title="Fermer cet onglet" onClick={() => closeTab(id)}><X size={13} /></button>}
+              </div>;
+            })}
+          </div>
+          {(tabOverflow.left || tabOverflow.right) && <button type="button" className="preview-tabs-arrow" aria-label="Onglets de logs suivants" disabled={!tabOverflow.right}
+            onClick={() => tabListRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}><ChevronRight size={15} /></button>}
+        </div>
+        <div className="preview-add" ref={tabMenuRef}>
+          <button type="button" className="icon-button preview-add-button" aria-label="Ouvrir des logs" title="Ouvrir des logs"
+            aria-expanded={showTabMenu} onClick={() => setShowTabMenu((shown) => !shown)}><SprintNavIcon name="previewAdd" active /></button>
+          {showTabMenu && <div className="preview-server-menu logs-tab-menu">
+            <div className="preview-menu-heading"><strong>Ouvrir des logs</strong><span>Choisissez un serveur</span></div>
+            <div className="preview-menu-list">
+              {projects.map((project) => {
+                const servers = allServers.filter((item) => item.projectId === project.id);
+                if (!servers.length) return null;
+                return <section className="preview-server-group" key={project.id}>
+                  <div className="preview-server-group-heading"><ProjectAvatar project={project} image={projectIcons[project.id]} small /><strong>{project.name}</strong></div>
+                  {servers.map((item) => <div key={item.id} className="preview-server-option">
+                    <button type="button" className="preview-server-option-select" onClick={() => openTab(item.id)}>
+                      <span className={`server-dot ${item.state === 'running' ? 'running' : ''}`} />
+                      <span><strong>{item.name}</strong><small>{item.state === 'running' ? 'En cours' : 'Arrêté'}{openTabs.includes(item.id) ? ' · Ouvert' : ''}</small></span>
+                    </button>
+                  </div>)}
+                </section>;
+              })}
+            </div>
+          </div>}
+        </div>
+      </div>
+        <div className="logs-header-actions">
+          <label className="logs-stopped-toggle">
+            <input
+              type="checkbox"
+              checked={showAllServers}
+              onChange={(event) => setShowAllServers(event.target.checked)}
+            />
+            Inclure les arrêtés
+          </label>
+          <button
+            className="quiet-button logs-split-toggle"
+            onClick={() => setIsSplitMode((value) => !value)}
+            aria-pressed={isSplitMode}
+            disabled={allServers.length < 2}
+            title="Comparer deux flux de logs"
+          >
+            <Columns size={14} /> {isSplitMode ? 'Une console' : 'Deux consoles'}
+          </button>
+          <button type="button" className="icon-button preview-controls-toggle" aria-expanded={showTools}
+            aria-controls={isSplitMode ? 'terminal-controls-1 terminal-controls-2' : 'terminal-controls-1'}
+            aria-label={showTools ? 'Replier les commandes des logs' : 'Afficher les commandes des logs'}
+            title={showTools ? 'Replier les commandes des logs' : 'Afficher les commandes des logs'}
+            onClick={() => setShowTools((shown) => !shown)}>
+            <SprintNavIcon name="previewControls" active />{showTools ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        </div>
+      </header>
       {!showAllServers && (!runningServers.length || primaryServer?.state !== 'running' || (isSplitMode && secondaryServer?.state !== 'running')) && (
         <p className="logs-selection-note">{!runningServers.length
           ? 'Aucun serveur en marche : les serveurs arrêtés restent disponibles pour être lancés.'
           : 'Une console ouverte reste visible après l’arrêt du serveur pour conserver ses dernières lignes.'}</p>
       )}
       <div className={'terminal-grid ' + (isSplitMode ? 'split' : '')}>
-        <TerminalPanel key={primaryServer?.id || 'empty-primary'} server={primaryServer} titlePrefix="Console 1"
+        <TerminalPanel key={primaryServer?.id || 'empty-primary'} server={primaryServer} titlePrefix="Console 1" showTools={showTools}
           onStart={handleStartServer} pending={!!getOperation(primaryServer?.id)}
-          selector={<ConsoleSelector server={primaryServer} servers={displayServers} number={1} otherId={isSplitMode ? secondaryServer?.id : null} onChange={setActiveServerId} onStart={handleStartServer} pending={!!getOperation(primaryServer?.id)} />} />
-        {isSplitMode && <TerminalPanel key={secondaryServer?.id || 'empty-secondary'} server={secondaryServer} titlePrefix="Console 2"
+          selector={<ConsoleSelector server={primaryServer} servers={displayServers} number={1} otherId={isSplitMode ? secondaryServer?.id : null} onChange={openTab} onStart={handleStartServer} pending={!!getOperation(primaryServer?.id)} />} />
+        {isSplitMode && <TerminalPanel key={secondaryServer?.id || 'empty-secondary'} server={secondaryServer} titlePrefix="Console 2" showTools={showTools}
           onStart={handleStartServer} pending={!!getOperation(secondaryServer?.id)}
-          selector={<ConsoleSelector server={secondaryServer} servers={displayServers} number={2} otherId={primaryServer?.id} onChange={setSplitServerId} onStart={handleStartServer} pending={!!getOperation(secondaryServer?.id)} />} />}
+          selector={<ConsoleSelector server={secondaryServer} servers={displayServers} number={2} otherId={primaryServer?.id} onChange={openSecondary} onStart={handleStartServer} pending={!!getOperation(secondaryServer?.id)} />} />}
       </div>
     </div>
   );

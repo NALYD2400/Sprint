@@ -163,6 +163,7 @@ export default function ProjectsView({
   }, [openMenu]);
 
   const toggleProjectCollapse = (projectId) => {
+    setOpenMenu(null);
     setCollapsedProjects((prev) => {
       const updated = { ...prev, [projectId]: !prev[projectId] };
       try {
@@ -173,6 +174,7 @@ export default function ProjectsView({
   };
 
   const handleToggleAll = () => {
+    setOpenMenu(null);
     const allCollapsed = projects.every((p) => collapsedProjects[p.id]);
     const nextState = {};
     projects.forEach((p) => {
@@ -373,6 +375,7 @@ export default function ProjectsView({
         </div>
       </div>}
 
+      <div className="projects-filter-transition" key={projectFilter}>
       {projects.length === 0 ? (
         <div className="py-20 text-center space-y-4">
           <Folder className="w-8 h-8 text-zinc-600 mx-auto" />
@@ -414,6 +417,7 @@ export default function ProjectsView({
                     onClick={() => toggleProjectCollapse(project.id)}
                     className="flex items-center gap-2.5 min-w-0 min-h-6 cursor-pointer text-left"
                     aria-label={isCollapsed ? 'Déplier le projet' : 'Replier le projet'}
+                    aria-expanded={!isCollapsed}
                   >
                     <ChevronDown
                       className={`w-3.5 h-3.5 text-zinc-600 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
@@ -561,7 +565,9 @@ export default function ProjectsView({
                 </div>
 
                 {/* Serveurs : simples lignes sous un filet fin */}
-                {!isCollapsed && (
+                <div className={`project-server-drawer${isCollapsed ? ' is-collapsed' : ''}`}
+                  aria-hidden={isCollapsed} inert={isCollapsed ? true : undefined}>
+                  <div className="project-server-drawer-inner">
                   <div className="project-server-list">
                     {servers.map((srv) => {
                       const isRunning = srv.state === 'running';
@@ -718,12 +724,14 @@ export default function ProjectsView({
                       <span>Ajouter un serveur</span>
                     </button>
                   </div>
-                )}
+                  </div>
+                </div>
               </section>
             );
           })}
         </div>
       )}
+      </div>
 
       <ConfirmDialog
         open={!!confirmDelete}

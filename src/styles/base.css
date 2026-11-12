@@ -294,9 +294,11 @@ select:focus {
   min-height: 0;
 }
 .page-enter,
-.settings-section-enter {
+.settings-section-enter,
+.projects-filter-transition {
   animation: sprint-page-in 0.72s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
+.ports-filter-transition { animation:sprint-page-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) both; }
 .animate-scaleUp {
   animation: sprint-scale-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

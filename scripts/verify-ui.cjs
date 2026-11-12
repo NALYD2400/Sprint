@@ -86,6 +86,24 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Tableau de bord', exact: true }).waitFor();
 
+    // Native server actions must select the requested console/preview, including
+    // when that page is already open with another server selected.
+    for (const serverId of ['server1', 'server2']) {
+      await emit('tray-navigate', { tab: 'terminal', serverId });
+      await page.waitForFunction(id => document.querySelector('select[aria-label="Console 1"]')?.value === id, serverId);
+      check(await page.getByRole('combobox', { name: 'Console 1', exact: true }).inputValue() === serverId,
+        'tray opens the requested console ' + serverId);
+    }
+    for (const [serverId, port] of [['server2', 3001], ['server1', 3000]]) {
+      const url = `http://localhost:${port}/`;
+      await emit('tray-navigate', { tab: 'browser', serverId, url });
+      await page.waitForFunction(url => document.querySelector('.preview-stage iframe')?.getAttribute('src') === url, url);
+      check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === url,
+        'tray opens the requested preview ' + serverId);
+    }
+    await page.keyboard.press('Control+1');
+    await page.getByRole('heading', { name: 'Tableau de bord', exact: true }).waitFor();
+
     for (const size of ['md', 'xl']) {
       await page.evaluate(
         (size) =>

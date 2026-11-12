@@ -57,7 +57,7 @@ export default function HomeView({
       <section className="dashboard-stats" aria-label="Statistiques">
         {[
           ['Projets', projects.length, 'enregistrés', 'projects'],
-          ['Serveurs actifs', running.length, `sur ${servers.length} configurés`, Activity],
+          ['Serveurs actifs', running.length, `sur ${servers.length} configurés`, 'serversActive'],
           [
             'Processeur',
             hasMetrics ? `${number(metrics[cpuField]).toFixed(1)} %` : '—',
@@ -70,13 +70,13 @@ export default function HomeView({
             system ? 'Ordinateur' : 'Vos projets',
             'memory',
           ],
-        ].map(([label, value, detail, Icon]) => (
+        ].map(([label, value, detail, icon]) => (
           <div key={label} className="dashboard-stat">
-            <span className="dashboard-stat-icon" aria-hidden="true">{typeof Icon === 'string' ? <SprintNavIcon name={Icon} active /> : <Icon size={19} />}</span>
+            <span className="dashboard-stat-icon" aria-hidden="true"><SprintNavIcon name={icon} active /></span>
             <div>
-            <p className="text-xs text-zinc-400">{label}</p>
-            <p className="stat-value text-2xl text-zinc-100 mt-2">{value}</p>
-            <p className="text-xs text-zinc-500 mt-1">{detail}</p>
+              <p className="dashboard-stat-label">{label}</p>
+              <p className="stat-value">{value}</p>
+              <p className="dashboard-stat-detail">{detail}</p>
             </div>
           </div>
         ))}

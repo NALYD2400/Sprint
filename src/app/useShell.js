@@ -7,7 +7,7 @@ import { APP_VERSION, GITHUB_REPO, isNewerVersion } from '../lib/updates';
 import { isTauriEnv, subscribeTauri } from '../lib/tauri';
 import { useProjects } from '../hooks/useProjects';
 
-const TRAY_TABS = ['dashboard', 'projects', 'terminal', 'settings'];
+const TRAY_TABS = ['dashboard', 'projects', 'terminal', 'settings', 'browser'];
 
 function isTyping(target) {
   return !!target && (
@@ -74,7 +74,10 @@ export function useShell() {
       const tab = typeof payload === 'string' ? payload : payload?.tab;
       if (!TRAY_TABS.includes(tab)) return;
       setIsPaletteOpen(false);
-      if (payload?.serverId) setSelectedTerminalId(payload.serverId);
+      if (payload?.serverId) {
+        if (tab === 'browser') setBrowserTarget({ serverId: payload.serverId, url: payload.url || null });
+        else if (tab === 'terminal') setSelectedTerminalId(payload.serverId);
+      }
       setActiveTab(tab);
     });
     subscribe('tray-action-error', ({ payload }) => {

@@ -285,7 +285,7 @@ export default function SettingsView({
       />
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Sections des paramètres">
-          {categories.map(([id, label, , Icon]) => (
+          {categories.map(([id, label, description, Icon]) => (
             <button
               key={id}
               onClick={() => {
@@ -293,8 +293,11 @@ export default function SettingsView({
                 contentRef.current?.scrollTo({ top: 0 });
               }}
               aria-current={activeTab === id ? 'page' : undefined}
+              aria-label={label}
+              type="button"
             >
-              <Icon size={15} aria-hidden="true" />{label}
+              <span className="settings-nav-icon"><Icon size={16} aria-hidden="true" /></span>
+              <span className="settings-nav-copy"><span>{label}</span><small>{description}</small></span>
             </button>
           ))}
         </nav>

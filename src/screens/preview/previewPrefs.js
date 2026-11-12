@@ -15,9 +15,10 @@ export function loadPreviewPrefs() {
       url, mode: MODES.has(saved.mode) ? saved.mode : 'desktop',
       width: dimension(saved.width, 240, 3840, 1280),
       height: dimension(saved.height, 240, 2160, 800), fit: saved.fit !== false,
+      logsHeight: dimension(saved.logsHeight, 120, 700, 200),
     };
   } catch {
-    return { serverId: null, url: '', mode: 'desktop', width: 1280, height: 800, fit: true };
+    return { serverId: null, url: '', mode: 'desktop', width: 1280, height: 800, fit: true, logsHeight: 200 };
   }
 }
 
