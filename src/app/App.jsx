@@ -1,7 +1,7 @@
+import { useEffect } from 'react';
 import ColorBendsBackground from '../components/ui/ColorBendsBackground';
 import TitleBar from '../components/layout/TitleBar';
 import Sidebar from '../components/layout/Sidebar';
-import ContextMenu from '../components/ui/ContextMenu';
 import ToastContainer from '../components/ui/ToastContainer';
 import WorkspaceMain from './Workspace';
 import AppModals from './AppModals';
@@ -13,8 +13,31 @@ export default function App() {
   return <SystemMetricsProvider><AppShell /></SystemMetricsProvider>;
 }
 
+function keepNativeContextMenu(target) {
+  if (!target?.tagName) return false;
+  const tag = target.tagName;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    target.isContentEditable ||
+    !!target.closest?.('[aria-modal="true"]')
+  );
+}
+
 function AppShell() {
   const shell = useShell();
+
+  useEffect(() => {
+    // Le clic droit ne propose plus de navigation : ces pages sont déjà dans la barre latérale.
+    // On bloque quand même le menu du navigateur (recharger, imprimer), sauf dans les champs et les dialogues.
+    const blockBrowserMenu = (event) => {
+      if (keepNativeContextMenu(event.target)) return;
+      event.preventDefault();
+    };
+    window.addEventListener('contextmenu', blockBrowserMenu);
+    return () => window.removeEventListener('contextmenu', blockBrowserMenu);
+  }, []);
 
   return (
     <div className="app-shell flex flex-col overflow-hidden font-sans text-zinc-100">
@@ -26,10 +49,6 @@ function AppShell() {
         <ColorBendsBackground />
       </div>
 
-      <ContextMenu
-        onOpenCommandPalette={() => shell.setIsPaletteOpen(true)}
-        onSelectTab={shell.setActiveTab}
-      />
       <TitleBar
         runningCount={shell.activeServersCount}
         dark={resolveTheme(shell.prefs.theme) === 'dark'}

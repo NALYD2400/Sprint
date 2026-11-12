@@ -26,6 +26,14 @@
   flex: none;
 }
 .page-header-icon > span { transform: scale(1.35); }
+.page-mark {
+  width: 112px;
+  height: 112px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+}
+.page-mark > span { transform: scale(2.15); }
 .page-lead {
   font-size: 13px;
   color: var(--text-mid);
@@ -499,3 +507,44 @@ main#main-content[data-view='settings'] {
 
 .server-avatar-status.is-error { background:var(--color-rose-300); }
 .server-avatar-status.is-starting { background:#f59e0b; }
+
+.mcp-mark {
+  width: 34px;
+  height: 24px;
+  display: inline-flex;
+  flex: none;
+}
+.mcp-mark-lg { width: 64px; height: 44px; }
+.mcp-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.mcp-connect { padding: 16px 16px 14px; }
+.mcp-connect-head { display: flex; align-items: center; gap: 10px; }
+.mcp-connect-head h2 { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; }
+.mcp-connect-close { margin-left: auto; }
+.mcp-connect .segmented-control { display: flex; width: 100%; margin-top: 14px; }
+.mcp-connect .segmented-control button { flex: 1; }
+.mcp-connect .segmented-control button[aria-pressed='true'] {
+  color: var(--accent-readable);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-color-rgb), 0.45);
+}
+.mcp-connect-hint { margin: 12px 0 8px; font-size: 12px; color: var(--text-mid); line-height: 1.5; }
+.mcp-connect-snippet {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-hi);
+  font: 12px/1.55 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  max-height: 180px;
+  overflow: auto;
+}
+.mcp-connect-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.mcp-connect-copy { min-width: 88px; }

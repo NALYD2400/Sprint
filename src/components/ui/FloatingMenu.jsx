@@ -19,10 +19,15 @@ export default function FloatingMenu({ children, point, width = 224, className =
       const menuWidth = Math.min(width, Math.max(1, availableWidth - 16));
       const menuHeight = Math.min(panel.offsetHeight, Math.max(1, availableHeight - 16));
       const anchor = anchorRef.current?.parentElement?.getBoundingClientRect();
-      const x = point ? point.x / zoom : (anchor?.right || 0) / zoom - menuWidth;
+      let x = point ? point.x / zoom : (anchor?.right || 0) / zoom - menuWidth;
       let y = point ? point.y / zoom : (anchor?.bottom || 0) / zoom + 6;
-      if (!point && anchor && y + menuHeight > availableHeight - 8) {
-        y = anchor.top / zoom - menuHeight - 6;
+      if (y + menuHeight > availableHeight - 8) {
+        const above = point ? point.y / zoom - menuHeight : (anchor?.top || 0) / zoom - menuHeight - 6;
+        if (above >= 8) y = above;
+      }
+      if (point && x + menuWidth > availableWidth - 8) {
+        const leftward = point.x / zoom - menuWidth;
+        if (leftward >= 8) x = leftward;
       }
       const next = {
         left: Math.max(8, Math.min(x, availableWidth - menuWidth - 8)),

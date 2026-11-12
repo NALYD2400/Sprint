@@ -91,6 +91,49 @@ fn save_settings_cmd(settings: AppSettings) -> Result<(), String> {
     save_settings(&settings)
 }
 
+/// Chemin absolu de `mcp/server.mjs`, résolu depuis le dépôt ou le binaire.
+#[tauri::command]
+fn mcp_server_path_cmd() -> Result<String, String> {
+    let relative = std::path::Path::new("mcp").join("server.mjs");
+    let mut candidates = Vec::new();
+
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join(&relative));
+        if let Some(parent) = cwd.parent() {
+            candidates.push(parent.join(&relative));
+        }
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        let mut dir = exe.parent().map(std::path::Path::to_path_buf);
+        for _ in 0..8 {
+            let Some(current) = dir else { break };
+            candidates.push(current.join(&relative));
+            dir = current.parent().map(std::path::Path::to_path_buf);
+        }
+    }
+
+    candidates.push(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join(relative),
+    );
+
+    for candidate in candidates {
+        if candidate.is_file() {
+            return Ok(display_existing_path(&candidate));
+        }
+    }
+
+    Err("Le fichier mcp/server.mjs est introuvable à côté de Sprint.".into())
+}
+
+fn display_existing_path(path: &std::path::Path) -> String {
+    let absolute = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let text = absolute.to_string_lossy();
+    text.strip_prefix(r"\\?\").unwrap_or(text.as_ref()).to_string()
+}
+
 #[tauri::command]
 fn detect_stack_cmd(path: String) -> DetectedStack {
     detect_stack(&path)
@@ -182,6 +225,7 @@ pub fn run() {
             save_projects_cmd,
             get_settings_cmd,
             save_settings_cmd,
+            mcp_server_path_cmd,
             detect_stack_cmd,
             project_icons::get_project_icons_cmd,
             start_server_cmd,
@@ -209,6 +253,23 @@ pub fn run() {
         ])
         .run(app_context())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod mcp_path_tests {
+    #[test]
+    fn mcp_server_path_points_at_repo_file() {
+        let path = super::mcp_server_path_cmd().expect("mcp/server.mjs");
+        assert!(
+            std::path::Path::new(&path).is_file(),
+            "chemin introuvable : {path}"
+        );
+        assert!(
+            path.replace('\\', "/").ends_with("mcp/server.mjs"),
+            "{path}"
+        );
+        assert!(!path.starts_with(r"\\?\"), "{path}");
+    }
 }
 
 #[cfg(all(test, feature = "custom-protocol"))]

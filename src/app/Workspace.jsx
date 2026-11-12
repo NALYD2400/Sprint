@@ -39,7 +39,7 @@ export default function WorkspaceMain({ shell }) {
       tabIndex={-1}
       className="flex-1 min-w-0 min-h-0 px-6 lg:px-8 py-6 overflow-y-auto outline-none"
     >
-      <ErrorBoundary resetKey={activeTab}>
+      <ErrorBoundary resetKey={`${activeTab}:logo`} icon={activeTab}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-sm text-zinc-500" role="status">
             Chargement de vos projets…

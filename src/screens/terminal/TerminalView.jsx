@@ -2,7 +2,6 @@ import { readStoredSetting } from '../../lib/settingsStorage';
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useServerLogs } from '../../hooks/useServerLogs';
 import {
-  Terminal,
   Trash2,
   Copy,
   Check,
@@ -21,7 +20,7 @@ import {
   Square,
 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
-import SprintNavIcon from '../../components/layout/SprintNavIcon';
+import SprintNavIcon, { PageLogo } from '../../components/layout/SprintNavIcon';
 import EmptyState from '../../components/ui/EmptyState';
 import useServerOperations from '../../hooks/useServerOperations';
 import { performServerAction } from '../../lib/serverActions';
@@ -295,7 +294,7 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
               <button className="btn" onClick={() => { setFilter(''); setLevel('all'); }}>Réinitialiser les filtres</button>
             </EmptyState>
           ) : (
-            <EmptyState icon={Terminal}
+            <EmptyState mark="terminal"
               title={server.state === 'running' ? 'En attente des premières lignes' : 'Ce serveur est arrêté'}
               description={server.state === 'running' ? 'Les nouvelles sorties du serveur apparaîtront ici.' : 'Lancez-le pour voir ses logs dans cette console.'}
               command={server.command}>
@@ -534,7 +533,7 @@ export default function TerminalView({ projects = [], projectIcons = {}, initial
       <div className="page logs-page">
         <PageHeader title="Logs" icon={<SprintNavIcon name="terminal" active />} />
         <div className="empty-state flex-1 flex flex-col items-center justify-center gap-3">
-          <Terminal size={28} />
+          <PageLogo name="terminal" />
           <h2 className="text-sm font-medium">Vos consoles apparaîtront ici</h2>
           <p className="text-xs text-zinc-400">
             Ajoutez un projet et configurez sa commande de lancement.

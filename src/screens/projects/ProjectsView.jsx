@@ -1,5 +1,5 @@
 import ProjectAvatar from '../../components/ui/ProjectAvatar';
-import SprintNavIcon from '../../components/layout/SprintNavIcon';
+import SprintNavIcon, { PageLogo } from '../../components/layout/SprintNavIcon';
 import React, { useState, useEffect } from 'react';
 import FloatingMenu from '../../components/ui/FloatingMenu';
 import { invoke } from '@tauri-apps/api/core';
@@ -20,12 +20,15 @@ import {
   Copy,
   AlertTriangle,
   Pin,
+  Play,
+  Square,
+  RotateCw,
 } from 'lucide-react';
 import { triggerToast } from '../../lib/toastBus';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import ServerControls from '../../components/ui/ServerControls';
 import useServerOperations from '../../hooks/useServerOperations';
-import { startProject, stopProject, openUrl, projectUrl } from '../../lib/serverActions';
+import { startProject, stopProject, openUrl, projectUrl, performServerAction } from '../../lib/serverActions';
 
 function MenuItem({ icon: Icon, danger, onClick, children }) {
   return (
@@ -144,6 +147,7 @@ export default function ProjectsView({
     if (!openMenu) return undefined;
 
     const handlePointerDown = (e) => {
+      if (e.button === 2) return;
       if (!e.target.closest('[data-dropdown-container]')) {
         setOpenMenu(null);
       }
@@ -252,13 +256,19 @@ export default function ProjectsView({
     setConfirmStopProject(null);
     if (project) await stopProject(project);
   };
-  const handleCopyPath = async (path) => {
+  const handleCopyPath = async (path, title = 'Chemin copié') => {
     try {
       await navigator.clipboard.writeText(path);
-      triggerToast({ title: 'Chemin copié', message: path, type: 'success' });
+      triggerToast({ title, message: path, type: 'success' });
     } catch (error) {
       triggerToast({ title: 'Copie impossible', message: String(error), type: 'error' });
     }
+  };
+  const openAtPointer = (event, menu) => {
+    if (event.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setOpenMenu({ ...menu, x: event.clientX, y: event.clientY });
   };
 
   const confirmDeleteTarget = confirmDelete || {};
@@ -378,7 +388,7 @@ export default function ProjectsView({
       <div className="projects-filter-transition" key={projectFilter}>
       {projects.length === 0 ? (
         <div className="py-20 text-center space-y-4">
-          <Folder className="w-8 h-8 text-zinc-600 mx-auto" />
+          <PageLogo name="projects" />
           <div>
             <h3 className="text-sm font-medium text-white">Aucun projet</h3>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto mt-1">
@@ -410,7 +420,8 @@ export default function ProjectsView({
             const meta = [project.framework, project.branch].filter(Boolean).join(' · ');
 
             return (
-              <section key={project.id} data-project-id={project.id} className={`project-section ${hasActiveMenu ? 'relative z-30' : ''}`}>
+              <section key={project.id} data-project-id={project.id} className={`project-section ${hasActiveMenu ? 'relative z-30' : ''}`}
+                onContextMenu={(event) => openAtPointer(event, { type: 'project', id: project.id })}>
                 {/* Titre de projet */}
                 <div className="group/head project-section-header flex items-center justify-between gap-3">
                   <button
@@ -468,7 +479,7 @@ export default function ProjectsView({
                           setOpenMenu((prev) =>
                             prev?.type === 'project' && prev?.id === project.id
                               ? null
-                              : { type: 'project', id: project.id }
+                              : { type: 'project', id: project.id, x: e.clientX, y: e.clientY }
                           );
                         }}
                         className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
@@ -483,7 +494,7 @@ export default function ProjectsView({
                       </button>
 
                       {isProjectMenuOpen && (
-                        <FloatingMenu className="rounded-lg p-1 text-xs">
+                        <FloatingMenu point={{ x: openMenu.x, y: openMenu.y }} width={228} className="context-menu text-xs">
                           <MenuItem
                             icon={Code2}
                             onClick={() => {
@@ -520,6 +531,36 @@ export default function ProjectsView({
                           >
                             Variables .env
                           </MenuItem>
+                          <MenuItem
+                            icon={Pin}
+                            onClick={() => {
+                              setOpenMenu(null);
+                              onToggleFavorite?.(project.id);
+                            }}
+                          >
+                            {favorites.has(project.id) ? 'Retirer des favoris' : 'Épingler le projet'}
+                          </MenuItem>
+                          {servers.length > 0 && (activeServersCount > 0 ? (
+                            <MenuItem
+                              icon={Square}
+                              onClick={() => {
+                                setOpenMenu(null);
+                                handleStopProjectServers(project);
+                              }}
+                            >
+                              Tout arrêter
+                            </MenuItem>
+                          ) : (
+                            <MenuItem
+                              icon={Play}
+                              onClick={() => {
+                                setOpenMenu(null);
+                                handleStartProjectServers(project);
+                              }}
+                            >
+                              Tout lancer
+                            </MenuItem>
+                          ))}
                           {(project.url || (servers[0] && (servers[0].url || servers[0].port > 0))) && (
                             <MenuItem
                               icon={Monitor}
@@ -577,6 +618,7 @@ export default function ProjectsView({
                         <div
                           key={srv.id}
                           data-server-id={srv.id}
+                          onContextMenu={(event) => openAtPointer(event, { type: 'server', id: srv.id })}
                           className={`group/row flex items-center justify-between gap-3 h-11 px-3 -ml-1 rounded-lg transition-colors ${
                             isServerMenuOpen ? 'bg-white/[0.04] relative z-40' : 'hover:bg-white/[0.03]'
                           }`}
@@ -632,7 +674,7 @@ export default function ProjectsView({
                                   setOpenMenu((prev) =>
                                     prev?.type === 'server' && prev?.id === srv.id
                                       ? null
-                                      : { type: 'server', id: srv.id }
+                                      : { type: 'server', id: srv.id, x: e.clientX, y: e.clientY }
                                   );
                                 }}
                                 className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
@@ -647,7 +689,36 @@ export default function ProjectsView({
                               </button>
 
                               {isServerMenuOpen && (
-                                <FloatingMenu width={208} className="rounded-lg p-1 text-xs">
+                                <FloatingMenu point={{ x: openMenu.x, y: openMenu.y }} width={228} className="context-menu text-xs">
+                                  <MenuItem
+                                    icon={isRunning ? Square : Play}
+                                    onClick={() => {
+                                      setOpenMenu(null);
+                                      performServerAction(isRunning ? 'stop' : 'start', project, srv);
+                                    }}
+                                  >
+                                    {isRunning ? 'Arrêter le serveur' : 'Lancer le serveur'}
+                                  </MenuItem>
+                                  {isRunning && (
+                                    <MenuItem
+                                      icon={RotateCw}
+                                      onClick={() => {
+                                        setOpenMenu(null);
+                                        performServerAction('restart', project, srv);
+                                      }}
+                                    >
+                                      Redémarrer
+                                    </MenuItem>
+                                  )}
+                                  <MenuItem
+                                    icon={Terminal}
+                                    onClick={() => {
+                                      setOpenMenu(null);
+                                      onOpenTerminal(srv.id, srv.name);
+                                    }}
+                                  >
+                                    Voir les logs
+                                  </MenuItem>
                                   {(srv.url || srv.port > 0) && (
                                     <MenuItem
                                       icon={Monitor}
@@ -658,6 +729,45 @@ export default function ProjectsView({
                                       }}
                                     >
                                       Aperçu Web & Devices
+                                    </MenuItem>
+                                  )}
+                                  <div className="my-1 border-t border-[var(--line)]" />
+                                  <MenuItem
+                                    icon={Folder}
+                                    onClick={() => {
+                                      setOpenMenu(null);
+                                      handleOpenExplorer(project.root);
+                                    }}
+                                  >
+                                    Ouvrir le dossier
+                                  </MenuItem>
+                                  <MenuItem
+                                    icon={Copy}
+                                    onClick={() => {
+                                      setOpenMenu(null);
+                                      handleCopyPath(project.root);
+                                    }}
+                                  >
+                                    Copier le chemin
+                                  </MenuItem>
+                                  <MenuItem
+                                    icon={Copy}
+                                    onClick={() => {
+                                      setOpenMenu(null);
+                                      handleCopyPath(srv.command, 'Commande copiée');
+                                    }}
+                                  >
+                                    Copier la commande
+                                  </MenuItem>
+                                  {srv.port > 0 && (
+                                    <MenuItem
+                                      icon={Copy}
+                                      onClick={() => {
+                                        setOpenMenu(null);
+                                        handleCopyPath(String(srv.port), 'Port copié');
+                                      }}
+                                    >
+                                      Copier le port
                                     </MenuItem>
                                   )}
                                   {srv.port > 0 && (tunnels.some((tunnel) => tunnel.port === srv.port) ? (

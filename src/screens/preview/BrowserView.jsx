@@ -361,7 +361,7 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
   } catch {}
   const canPreview = !!url && (!localTarget || online === true);
   const offline = (
-    <EmptyState className="preview-offline" icon={Monitor}
+    <EmptyState className="preview-offline" mark="browser"
       title={server ? online === null ? 'Vérification du serveur…' : server.projectName + ' est hors ligne' : 'Aucun serveur web configuré'}
       description={server ? 'Lancez le serveur pour afficher votre site.' : 'Ajoutez un serveur avec un port dans vos projets.'}
       command={server?.command}>

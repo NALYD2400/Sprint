@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 let base;
 const { entry, projects } = require('./fixtures/ui.cjs');
+const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
 
 (async () => {
   const { createServer } = await import('vite');
@@ -98,6 +99,8 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       const url = `http://localhost:${port}/`;
       await emit('tray-navigate', { tab: 'browser', serverId, url });
       await page.waitForFunction(url => document.querySelector('.preview-stage iframe')?.getAttribute('src') === url, url);
+      const revealCommands = page.getByRole('button', { name: 'Afficher les commandes', exact: true });
+      if (await revealCommands.count()) await revealCommands.click();
       check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === url,
         'tray opens the requested preview ' + serverId);
     }
@@ -241,6 +244,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
       'updates stay available from about');
     check(await page.getByRole('button', { name: 'Copier le skill' }).count() === 0,
       'assistant skill is not a setting');
+    await verifyMcpConnect(page, check);
     for (const theme of ['light', 'dark']) {
       await setTheme(theme);
       await page.screenshot({ path: art + '/sprint-settings-about-' + theme + '.png' });
@@ -517,6 +521,8 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await page.keyboard.press('Control+3');
     await page.getByRole('heading', { name: 'Aperçu web', exact: true }).waitFor();
     await page.locator('.preview-stage iframe').waitFor();
+    const revealPreviewCommands = page.getByRole('button', { name: 'Afficher les commandes', exact: true });
+    if (await revealPreviewCommands.count()) await revealPreviewCommands.click();
     await page.getByRole('button', { name: 'Mobile', exact: true }).click();
     const mobile = page.locator('.preview-stage iframe');
     await mobile.waitFor();

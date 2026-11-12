@@ -21,6 +21,14 @@ const icons = { dashboard, projects, browser, ports, terminal, help, settings, c
 // Scale each image so the visible symbols occupy roughly the same 24px space.
 const imageSizes = { dashboard: 36, projects: 46, browser: 50, ports: 43, terminal: 36, help: 31, settings: 31, collapse: 36, cpu: 40, memory: 38, update: 32, serversActive: 52, previewAdd: 34, previewControls: 40, previewQr: 40, previewLogs: 48 };
 
+export function PageLogo({ name }) {
+  return (
+    <span className="page-mark">
+      <SprintNavIcon name={name} active />
+    </span>
+  );
+}
+
 export default function SprintNavIcon({ name, active = false, mirrored = false }) {
   const src = icons[name];
   if (!src) return null;

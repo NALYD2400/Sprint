@@ -43,6 +43,7 @@ projects[0].servers.push(
     env: {},
   })),
 );
+const mcpServerPath = 'C:\\Sprint Dev\\mcp\\server.mjs';
 const entry = `import { mockIPC, mockWindows } from '/node_modules/@tauri-apps/api/mocks.js';
 import { emit } from '/node_modules/@tauri-apps/api/event.js';
 window.__layoutCommands = []; window.__commands = []; window.__emit = emit; window.__failSave = false; window.__trayActivity = 0;
@@ -68,6 +69,7 @@ mockIPC((cmd, args) => {
   if (cmd === 'stop_server_cmd' && window.__holdStop) return new Promise(resolve => { window.__resolveStop = resolve; });
 
   if (cmd === 'get_local_ip_cmd') return '192.168.1.5';
+  if (cmd === 'mcp_server_path_cmd') return ${JSON.stringify(mcpServerPath)};
   if (cmd === 'get_settings_cmd') return null;
   if (cmd === 'plugin:dialog|open') return 'D:/Workspace/Projet';
   if (cmd === 'detect_stack_cmd') return {framework: 'React', default_dev_cmd: 'npm run dev', package_manager: 'npm'};
@@ -81,4 +83,4 @@ await import('/src/main.jsx');
 setInterval(() => emit('system-metrics', { cpu_usage: 20, ram_total_mb: 16000, ram_used_mb: 8000, managed_cpu_pct: 12, managed_ram_mb: 256, active_servers_count: 2, server_metrics: {} }), 200);
 `;
 
-module.exports = { entry, projects };
+module.exports = { entry, projects, mcpServerPath };

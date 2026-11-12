@@ -4,7 +4,7 @@ import { RefreshCw, ExternalLink, Search, ShieldAlert, XCircle, Copy, MoreHorizo
 import { triggerToast } from '../../lib/toastBus';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import PageHeader from '../../components/ui/PageHeader';
-import SprintNavIcon from '../../components/layout/SprintNavIcon';
+import SprintNavIcon, { PageLogo } from '../../components/layout/SprintNavIcon';
 import FloatingMenu from '../../components/ui/FloatingMenu';
 import ProjectAvatar from '../../components/ui/ProjectAvatar';
 import { portAccess, portCategory, projectWebUrl } from './portPresentation';
@@ -275,7 +275,8 @@ export default function PortsView({ projects = [], projectIcons = {} }) {
       )}
       {filteredPorts.length === 0 ? (
         <div key={filterType} className="empty-state ports-filter-transition">
-          <p className="text-zinc-100">{loading ? 'Recherche des ports…' : 'Aucun port trouvé'}</p>
+          <PageLogo name="ports" />
+          <p className="text-zinc-100 mt-2">{loading ? 'Recherche des ports…' : 'Aucun port trouvé'}</p>
           <p className="text-xs mt-2">
             {search || filterType !== 'all'
               ? 'Essayez une autre recherche ou affichez tous les ports.'

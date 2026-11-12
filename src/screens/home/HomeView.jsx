@@ -2,7 +2,7 @@ import ProjectAvatar from '../../components/ui/ProjectAvatar';
 import React, { useState } from 'react';
 import { Plus, SlidersHorizontal, Globe, ScrollText, ArrowRight, Pin, AlertTriangle, Search, ChevronDown, Activity } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
-import SprintNavIcon from '../../components/layout/SprintNavIcon';
+import SprintNavIcon, { PageLogo } from '../../components/layout/SprintNavIcon';
 import ResourceChart from '../../components/ui/ResourceChart';
 import ServerControls from '../../components/ui/ServerControls';
 import { dashboardPrefs } from '../../lib/dashboardPrefs';
@@ -237,6 +237,7 @@ export default function HomeView({
       </div>
       {config.hidden.length === 4 && (
         <div className="empty-state">
+          <PageLogo name="dashboard" />
           <p>Aucun bloc affiché.</p>
           <button className="btn mt-4" onClick={onCustomize}>
             Choisir les blocs du tableau de bord

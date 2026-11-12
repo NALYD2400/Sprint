@@ -188,15 +188,6 @@ main#main-content {
   margin-top: 4px;
   padding-top: 11px;
 }
-.context-menu-icon {
-  flex-shrink: 0;
-  color: var(--text-lo);
-}
-.context-menu-shortcut {
-  color: var(--text-lo);
-  font: 10px var(--font-mono);
-  white-space: nowrap;
-}
 
 ::selection {
   background: rgba(var(--accent-color-rgb), 0.35);

@@ -1,5 +1,6 @@
 import React from 'react';
-import { RefreshCw, LifeBuoy } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { PageLogo } from '../layout/SprintNavIcon';
 
 /**
  * Filet de sécurité : une erreur dans une vue n'affiche plus un écran noir,
@@ -28,9 +29,7 @@ export default class ErrorBoundary extends React.Component {
     return (
       <div role="alert" className="h-full flex items-center justify-center">
         <div className="max-w-md text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
-            <LifeBuoy className="w-6 h-6" />
-          </div>
+          <PageLogo name={this.props.icon || 'dashboard'} />
           <div>
             <h2 className="text-lg font-semibold text-zinc-50">Cette page a rencontré un problème</h2>
             <p className="text-sm text-zinc-400 mt-1.5">
