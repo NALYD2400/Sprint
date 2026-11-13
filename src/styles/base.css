@@ -116,22 +116,22 @@ textarea,
 }
 .window-control:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
 .window-close:hover {
-  color: #fff;
-  background: #e11d48;
+  color: #fb7185;
+  background: transparent;
 }
 :root[data-theme='light'] .window-control {
   color: #3f3f46;
 }
 :root[data-theme='light'] .window-control:hover {
   color: #18181b;
-  background: rgba(24, 24, 27, 0.06);
+  background: transparent;
 }
 :root[data-theme='light'] .window-close:hover {
-  color: #fff;
-  background: #e11d48;
+  color: #e11d48;
+  background: transparent;
 }
 main#main-content {
   border-radius: 16px 0 0 0;

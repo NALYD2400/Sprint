@@ -456,6 +456,14 @@ export default function TerminalView({ projects = [], projectIcons = {}, initial
     document.addEventListener('keydown', dismiss);
     return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', dismiss); };
   }, [showTabMenu]);
+  useEffect(() => {
+    if (!showTabMenu) return;
+    const anchor = tabMenuRef.current;
+    const menu = anchor?.querySelector('.preview-server-menu');
+    if (!anchor || !menu) return;
+    const spaceRight = window.innerWidth - anchor.getBoundingClientRect().left - 16;
+    menu.classList.toggle('is-align-end', menu.offsetWidth > spaceRight);
+  }, [showTabMenu]);
   const updateTabOverflow = () => {
     const list = tabListRef.current;
     if (!list) return;

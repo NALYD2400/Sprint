@@ -42,7 +42,7 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await page.waitForFunction(() => document.querySelector('.preview-tabs').scrollLeft < 2);
     await page.getByRole('button', { name: 'Afficher les commandes' }).click();
     await page.waitForFunction(() => document.querySelector('#preview-controls-panel').getBoundingClientRect().height > 40);
-    await page.getByRole('button', { name: 'Ouvrir ou lancer un serveur' }).click();
+    await page.getByRole('button', { name: 'Choisir un projet' }).click();
     const search = page.getByRole('textbox', { name: 'Rechercher un projet ou un serveur' });
     await search.focus();
     assert.equal(await search.evaluate((input) => getComputedStyle(input).boxShadow), 'none', 'search focus has no inner ring');

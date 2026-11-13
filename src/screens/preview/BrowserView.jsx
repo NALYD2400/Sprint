@@ -11,6 +11,7 @@ import {
   Terminal,
   Columns,
   Play,
+  Plus,
   Square,
   ArrowRight,
   Loader2,
@@ -33,7 +34,7 @@ import PreviewFrame from './PreviewFrame';
 import Modal from '../../components/ui/Modal';
 import ProjectAvatar from '../../components/ui/ProjectAvatar';
 import LogContent from '../../components/ui/LogContent';
-import { readDismissedTabs, saveDismissedTabs, syncPreviewTabs } from './previewTabs';
+import { initialPreviewSelection, readDismissedTabs, readOpenTabs, saveDismissedTabs, saveOpenTabs, syncPreviewTabs } from './previewTabs';
 
 const DEVICES = [
   ['desktop', 'Ordinateur', Monitor],
@@ -59,15 +60,18 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
       ),
     [projects],
   );
-  const [serverId, setServerId] = useState(
-    initialServerId || (servers.some((server) => server.id === savedPreview.serverId) ? savedPreview.serverId : null)
-      || servers.find((server) => server.state === 'running')?.id || servers[0]?.id,
-  );
-  const server = servers.find((item) => item.id === serverId) || servers[0];
-  const [url, setUrl] = useState(initialUrl || (savedPreview.serverId === server?.id ? savedPreview.url : '') || server?.url || '');
-  const [address, setAddress] = useState(url);
   const dismissedTabs = useRef(readDismissedTabs());
-  const [openServers, setOpenServers] = useState(() => syncPreviewTabs(server ? [server.id] : [], servers, dismissedTabs.current));
+  const [previewSession] = useState(() => initialPreviewSelection(servers, {
+    initialServerId,
+    savedServerId: savedPreview.serverId,
+    savedOpenIds: readOpenTabs(),
+    dismissed: dismissedTabs.current,
+  }));
+  const [serverId, setServerId] = useState(previewSession.serverId);
+  const server = servers.find((item) => item.id === serverId) || null;
+  const [url, setUrl] = useState(initialUrl || (server && savedPreview.serverId === server.id ? savedPreview.url : '') || server?.url || '');
+  const [address, setAddress] = useState(url);
+  const [openServers, setOpenServers] = useState(previewSession.openIds);
   const tabUrls = useRef({});
   const [frameKey, setFrameKey] = useState(0);
   const [mode, setMode] = useState(savedPreview.mode);
@@ -141,6 +145,14 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
     };
   }, [showServerMenu]);
   useEffect(() => {
+    if (!showServerMenu) return;
+    const anchor = serverMenu.current;
+    const menu = anchor?.querySelector('.preview-server-menu');
+    if (!anchor || !menu) return;
+    const spaceRight = window.innerWidth - anchor.getBoundingClientRect().left - 16;
+    menu.classList.toggle('is-align-end', menu.offsetWidth > spaceRight);
+  }, [showServerMenu, servers.length]);
+  useEffect(() => {
     const list = tabsRef.current;
     const selected = list?.querySelector('[aria-current="page"]');
     if (!list || !selected) return;
@@ -183,13 +195,40 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
       return next.length === ids.length && next.every((id, index) => id === ids[index]) ? ids : next;
     });
   }, [servers]);
+  useEffect(() => { saveOpenTabs(openServers); }, [openServers]);
   useEffect(() => {
-    if (server && !openServers.length) setOpenServers([server.id]);
-  }, [server, openServers.length]);
+    const selectedIsOpen = serverId && openServers.includes(serverId) && servers.some((item) => item.id === serverId);
+    if (selectedIsOpen) return;
+    const next = [...openServers].reverse().find((id) => servers.some((item) => item.id === id));
+    if (!next) {
+      if (!serverId) return;
+      clearTimeout(timers.current.start);
+      setStarting(false);
+      setServerId(null);
+      setUrl('');
+      setAddress('');
+      setError('');
+      setOnline(null);
+      return;
+    }
+    const selected = servers.find((item) => item.id === next);
+    const nextUrl = tabUrls.current[next] || selected.url;
+    clearTimeout(timers.current.start);
+    setStarting(false);
+    setServerId(next);
+    setUrl(nextUrl);
+    setAddress(nextUrl);
+    setError('');
+    setOnline(null);
+    setFrameKey((key) => key + 1);
+  }, [openServers, servers, serverId]);
   useEffect(() => {
-    savePreviewPrefs({ serverId: server?.id || null, url, mode,
-      width: Number(width), height: Number(height), fit, logsHeight });
-  }, [server?.id, url, mode, width, height, fit, logsHeight]);
+    savePreviewPrefs({
+      serverId: server?.id || savedPreview.serverId,
+      url: server ? url : savedPreview.url,
+      mode, width: Number(width), height: Number(height), fit, logsHeight,
+    });
+  }, [server, savedPreview.serverId, savedPreview.url, url, mode, width, height, fit, logsHeight]);
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => setPageHeight(entry.contentRect.height));
     if (pageRef.current) observer.observe(pageRef.current);
@@ -267,13 +306,20 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
       dismissedTabs.current.add(id);
       saveDismissedTabs(dismissedTabs.current);
     }
-    if (id === server?.id) {
-      const next = remaining[remaining.length - 1] || servers.find((item) => item.id !== id)?.id;
-      if (next) selectServer(next);
-      else return;
-    }
     delete tabUrls.current[id];
-    setOpenServers(remaining.length ? remaining : servers.filter((item) => item.id !== id).slice(0, 1).map((item) => item.id));
+    setOpenServers(remaining);
+    if (id !== server?.id) return;
+    const next = remaining[remaining.length - 1];
+    if (next) selectServer(next);
+    else {
+      clearTimeout(timers.current.start);
+      setStarting(false);
+      setServerId(null);
+      setUrl('');
+      setAddress('');
+      setError('');
+      setOnline(null);
+    }
   };
   const navigate = (event) => {
     event.preventDefault();
@@ -362,8 +408,8 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
   const canPreview = !!url && (!localTarget || online === true);
   const offline = (
     <EmptyState className="preview-offline" mark="browser"
-      title={server ? online === null ? 'Vérification du serveur…' : server.projectName + ' est hors ligne' : 'Aucun serveur web configuré'}
-      description={server ? 'Lancez le serveur pour afficher votre site.' : 'Ajoutez un serveur avec un port dans vos projets.'}
+      title={server ? online === null ? 'Vérification du serveur…' : server.projectName + ' est hors ligne' : servers.length ? 'Aucun aperçu ouvert' : 'Aucun serveur web configuré'}
+      description={server ? 'Lancez le serveur pour afficher votre site.' : servers.length ? 'Choisissez un projet pour ouvrir son aperçu.' : 'Ajoutez un serveur avec un port dans vos projets.'}
       command={server?.command}>
       {server ? (
         <button
@@ -373,6 +419,10 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
         >
           {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
           {starting ? 'Démarrage…' : 'Lancer le serveur'}
+        </button>
+      ) : servers.length ? (
+        <button className="btn" onClick={() => { setServerSearch(''); setShowServerMenu(true); }}>
+          <Plus size={14} /> Choisir un projet
         </button>
       ) : (
         <button className="btn" onClick={() => onSelectTab?.('projects')}>
@@ -437,8 +487,8 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
                 disabled={pending || !!stoppingId || starting} onClick={() => { if (running) stop(item); else { selectServer(id); start(item); } }}>
                 {pending ? <Loader2 size={13} className="animate-spin" /> : running ? <Square size={12} /> : <Play size={12} />}
               </button>
-              {openServers.length > 1 && <button type="button" className="preview-tab-close"
-                aria-label={`Fermer l’aperçu ${item.projectName} · ${item.name}`} onClick={() => closeServer(id)}><X size={13} /></button>}
+              <button type="button" className="preview-tab-close" title="Fermer cet onglet"
+                aria-label={`Fermer l’aperçu ${item.projectName} · ${item.name}`} onClick={() => closeServer(id)}><X size={13} /></button>
             </div>;
           })}
         </div>
@@ -446,11 +496,11 @@ export default function BrowserView({ projects = [], projectIcons = {}, initialS
           disabled={!tabOverflow.right} onClick={() => scrollTabs(1)}><ChevronRight size={15} /></button>}
         </div>
         <div className="preview-add" ref={serverMenu}>
-          <button type="button" className="icon-button preview-add-button" aria-label="Ouvrir ou lancer un serveur"
-            aria-expanded={showServerMenu} aria-controls="preview-server-menu" title="Ouvrir ou lancer un serveur"
+          <button type="button" className="icon-button preview-add-button" aria-label="Choisir un projet"
+            aria-expanded={showServerMenu} aria-controls="preview-server-menu" title="Choisir un projet à lancer"
             onClick={() => { if (!showServerMenu) setServerSearch(''); setShowServerMenu((shown) => !shown); }}><SprintNavIcon name="previewAdd" active /></button>
           {showServerMenu && <div id="preview-server-menu" className="preview-server-menu">
-            <div className="preview-menu-heading"><strong>Ouvrir un aperçu</strong><span>Choisissez un serveur</span></div>
+            <div className="preview-menu-heading"><strong>Choisir un projet</strong><span>Ouvrez son aperçu ou lancez-le</span></div>
             <label className="preview-menu-search"><Search size={15} aria-hidden="true" />
               <input autoFocus aria-label="Rechercher un projet ou un serveur" placeholder="Projet, serveur ou port…"
                 value={serverSearch} onChange={(event) => setServerSearch(event.target.value)} />
