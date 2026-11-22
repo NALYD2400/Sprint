@@ -20,7 +20,7 @@ export default function AppModals({ shell }) {
     setEnvModalRoot,
     editProjectTarget,
     setEditProjectTarget,
-    saveProjects,
+    saveProjectChange,
     serverForm,
     setServerForm,
     isUpdateModalOpen,
@@ -53,8 +53,7 @@ export default function AppModals({ shell }) {
       <EditProjectModal
         isOpen={!!editProjectTarget}
         project={editProjectTarget}
-        projects={projects}
-        saveProjects={saveProjects}
+        saveProjectChange={saveProjectChange}
         onClose={() => setEditProjectTarget(null)}
       />
       <ServerFormModal
@@ -62,8 +61,7 @@ export default function AppModals({ shell }) {
         isOpen={!!serverForm}
         project={serverForm?.project}
         server={serverForm?.server}
-        projects={projects}
-        saveProjects={saveProjects}
+        saveProjectChange={saveProjectChange}
         onClose={() => setServerForm(null)}
       />
       <AutoUpdateModal

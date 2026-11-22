@@ -13,7 +13,7 @@ const COLOR_PRESETS = [
   '#ef4444', // Rouge
 ];
 
-export default function EditProjectModal({ isOpen, onClose, project, projects, saveProjects }) {
+export default function EditProjectModal({ isOpen, onClose, project, saveProjectChange }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#a855f7');
   const [saving, setSaving] = useState(false);
@@ -29,20 +29,17 @@ export default function EditProjectModal({ isOpen, onClose, project, projects, s
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (saving) return;
-    const updatedProjects = projects.map((p) => {
-      if (p.id === project.id) {
-        return {
-          ...p,
-          name: name.trim() || p.name,
-          color: color || p.color,
-        };
-      }
-      return p;
-    });
+    const change = { type: 'editProject', projectId: project.id };
+    if (name.trim() && name.trim() !== project.name) change.name = name.trim();
+    if (color !== (project.color || '#a855f7')) change.color = color;
+    if (!change.name && !change.color) {
+      onClose();
+      return;
+    }
 
     setSaving(true);
     let saved;
-    try { saved = await saveProjects(updatedProjects); } finally { setSaving(false); }
+    try { saved = await saveProjectChange(change); } finally { setSaving(false); }
     if (saved === false) { setSaveError('Les modifications n’ont pas été enregistrées. Réessayez.'); return; }
     onClose();
   };

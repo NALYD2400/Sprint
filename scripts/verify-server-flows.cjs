@@ -124,26 +124,35 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     check(await page.evaluate(() => window.__toasts.at(-1).title) === 'Copie impossible', 'failed clipboard operation reports an error');
     await page.evaluate(() => { window.__failClipboard = false; });
 
+    const revealPreviewControls = () => page.getByRole('button', { name: 'Afficher les commandes', exact: true }).click();
+    const activePreview = page.locator('.preview-tab-select[aria-current="page"]');
+    const firstPreviewName = projects[0].servers[0].name;
+    const secondPreviewName = projects[0].servers[1].name;
     await page.keyboard.press('Control+3');
-    await page.getByRole('combobox', { name: 'Serveur à prévisualiser', exact: true }).selectOption('server1');
+    await page.locator('.preview-tab-select').getByText(firstPreviewName, { exact: true }).click();
+    await revealPreviewControls();
     await page.getByRole('button', { name: 'Mobile', exact: true }).click();
     await page.getByRole('combobox', { name: 'Zoom de l’aperçu' }).selectOption('actual');
     await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).fill('/page-memorisee');
     await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).press('Enter');
     await page.keyboard.press('Control+2');
     await page.keyboard.press('Control+3');
+    await revealPreviewControls();
     check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === 'http://localhost:3000/page-memorisee', 'preview remembers its page after switching views');
     check(await page.getByRole('button', { name: 'Mobile', exact: true }).getAttribute('aria-pressed') === 'true', 'preview remembers its device mode');
     check(await page.getByRole('combobox', { name: 'Zoom de l’aperçu' }).inputValue() === 'actual', 'preview remembers its zoom');
     await page.keyboard.press('Control+2');
     await page.locator('[data-server-id="server2"]').getByRole('button', { name: 'Options du serveur', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Aperçu Web & Devices', exact: true }).click();
-    check(await page.getByRole('combobox', { name: 'Serveur à prévisualiser' }).inputValue() === 'server2', 'explicit project action overrides the remembered server');
+    await activePreview.getByText(secondPreviewName, { exact: true }).waitFor();
+    check(await activePreview.innerText() === secondPreviewName, 'explicit project action overrides the remembered server');
+    await revealPreviewControls();
     check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === 'http://localhost:3001', 'explicit project action opens the requested URL');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Tableau de bord', exact: true }).waitFor();
     await page.keyboard.press('Control+3');
-    check(await page.getByRole('combobox', { name: 'Serveur à prévisualiser' }).inputValue() === 'server2', 'preview remembers its server after reload');
+    check(await activePreview.innerText() === secondPreviewName, 'preview remembers its server after reload');
+    await revealPreviewControls();
     check(await page.getByRole('button', { name: 'Mobile', exact: true }).getAttribute('aria-pressed') === 'true', 'preview remembers its format after reload');
     check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === 'http://localhost:3001/', 'remembered URL is validated when loading');
 
@@ -160,9 +169,12 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Tableau de bord', exact: true }).waitFor();
     await page.keyboard.press('Control+3');
-    check(await page.getByRole('combobox', { name: 'Serveur à prévisualiser' }).inputValue() === 'server1', 'removed remembered server falls back to an available server');
+    const fallbackName = await activePreview.innerText();
+    check([firstPreviewName, secondPreviewName].includes(fallbackName), 'removed remembered server falls back to an available server');
+    await revealPreviewControls();
     check(await page.getByRole('button', { name: 'Ordinateur', exact: true }).getAttribute('aria-pressed') === 'true', 'invalid remembered format uses the default');
-    check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === 'http://localhost:3000', 'invalid remembered URL is never restored');
+    const fallbackPort = fallbackName === firstPreviewName ? 3000 : 3001;
+    check(await page.getByRole('textbox', { name: 'Adresse de l’aperçu' }).inputValue() === `http://localhost:${fallbackPort}`, 'invalid remembered URL is never restored');
     // Command palette uses the shared lifecycle and keeps pending operations protected.
     await page.keyboard.press('Control+1');
     const palette = page.getByRole('dialog', { name: 'Rechercher dans Sprint' });
@@ -265,6 +277,35 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     await page.setViewportSize({ width: 960, height: 620 });
     check(await palette.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1), 'palette lifecycle commands fit the minimum window size');
     await page.screenshot({ path: art + '/sprint-palette-actions-dark.png' });
+
+    await paletteSearch.press('Escape');
+    await page.keyboard.press('Control+2');
+    await page.evaluate(() => {
+      window.__projects = [...window.__projects, {
+        id: 'desktop-fixture', name: 'Application Bureau', root: 'D:/Bureau', color: '#a855f7',
+        servers: [{ id: 'desktop-server', name: 'App locale', command: 'cargo run', port: 0, ramLimit: null, state: 'stopped', env: {} }],
+      }];
+      window.dispatchEvent(new Event('focus'));
+    });
+    const desktopServer = page.locator('[data-server-id="desktop-server"]');
+    await desktopServer.getByRole('button', { name: 'Options du serveur', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Modifier le serveur', exact: true }).click();
+    const editor = page.getByRole('dialog');
+    check(await editor.getByRole('spinbutton', {name: 'Port', exact: true}).inputValue() === '', 'a server without a port opens with an empty port');
+    await editor.getByRole('button', {name: 'Options avancées', exact: true}).click();
+    check(await editor.getByRole('spinbutton', {name: 'Mémoire maximale (Mo)'}).inputValue() === '', 'disabled RAM guard stays disabled in the form');
+    await editor.getByRole('textbox', {name: 'Nom', exact: true}).fill('Application renommée');
+    await page.evaluate(() => {
+      window.__projects = [...window.__projects, {
+        id: 'mcp-fixture', name: 'Projet ajouté via MCP', root: 'D:/MCP', color: '#a855f7', servers: [],
+      }];
+    });
+    await editor.getByRole('button', {name: 'Enregistrer', exact: true}).click();
+    await page.locator('[data-project-id="mcp-fixture"]').waitFor();
+    const change = (await commands()).findLast(item => item.cmd === 'change_projects_cmd').args.change;
+    check(change.name === 'Application renommée' && !('port' in change) && !('ramLimit' in change),
+      'server rename sends only the edited field and preserves a project added externally');
+
     check(errors.length === 0, 'no browser errors');
     fs.writeFileSync(path.join(art, 'server-flows-report.json'), JSON.stringify({ checks: results.length, results, errors }, null, 2));
     console.log(JSON.stringify({ checks: results.length, errors }, null, 2));

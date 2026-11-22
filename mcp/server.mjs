@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, readdirSync, renameSync, rmdirSync, unlinkSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import path from 'node:path';
 import os from 'node:os';
@@ -161,26 +161,77 @@ export function inspectProject(root) {
 
 function loadProjects() {
   const file = projectsFile();
-  if (!existsSync(file)) return { ok: true, projects: [] };
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8'));
     if (!Array.isArray(parsed)) return { ok: false, error: 'projects.json n’est pas une liste. Il n’a pas été modifié.' };
     return { ok: true, projects: parsed };
   } catch (error) {
+    if (error.code === 'ENOENT') return { ok: true, projects: [] };
     return { ok: false, error: `projects.json est illisible (${error.message}). Il n’a pas été modifié.` };
   }
 }
 
-function persist(projects) {
-  const dir = configDir();
-  mkdirSync(dir, { recursive: true });
-  const file = projectsFile();
-  const tmp = `${file}.tmp`;
-  const body = `${JSON.stringify(projects, null, 2)}\n`;
-  writeFileSync(tmp, body);
-  if (existsSync(file)) copyFileSync(file, `${file}.bak`);
+function removeLock(directory, owner) {
+  if (owner) {
+    try { unlinkSync(path.join(directory, owner)); } catch {}
+  }
+  try { rmdirSync(directory); } catch {}
+}
+
+function clearAbandonedLock(directory) {
+  let owners;
+  try { owners = readdirSync(directory); } catch { return; }
+  if (owners.length === 0) {
+    removeLock(directory);
+    return;
+  }
+  const pid = owners.length === 1 ? /^owner-(\d+)-/.exec(owners[0])?.[1] : null;
+  if (!pid || Number(pid) <= 0) return;
   try {
-    writeFileSync(file, body);
+    process.kill(Number(pid), 0);
+  } catch (error) {
+    if (error.code === 'ESRCH') removeLock(directory, owners[0]);
+  }
+}
+
+// Le répertoire candidat contient déjà son propriétaire au moment où le renommage
+// l'installe comme verrou. Sprint utilise le même protocole depuis Rust.
+function withProjectLock(work) {
+  mkdirSync(configDir(), { recursive: true });
+  const lock = `${projectsFile()}.lock`;
+  const owner = `owner-${process.pid}-${randomUUID()}`;
+  let directory = `${lock}.${owner}`;
+  mkdirSync(directory);
+  try {
+    writeFileSync(path.join(directory, owner), '', { flag: 'wx' });
+    const wait = new Int32Array(new SharedArrayBuffer(4));
+    const deadline = performance.now() + 3000;
+    while (true) {
+      try {
+        renameSync(directory, lock);
+        directory = lock;
+        break;
+      } catch (error) {
+        if (!['EACCES', 'EPERM', 'EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
+        clearAbandonedLock(lock);
+        if (performance.now() >= deadline) throw new Error('Le catalogue Sprint est occupé. Réessayez dans un instant.');
+        Atomics.wait(wait, 0, 0, 40);
+      }
+    }
+    return work();
+  } finally {
+    removeLock(directory, owner);
+  }
+}
+
+function persist(projects) {
+  const file = projectsFile();
+  const tmp = `${file}.${randomUUID()}.tmp`;
+  const body = `${JSON.stringify(projects, null, 2)}\n`;
+  try {
+    writeFileSync(tmp, body, { flag: 'wx', flush: true });
+    if (existsSync(file)) copyFileSync(file, `${file}.bak`);
+    renameSync(tmp, file);
   } finally {
     if (existsSync(tmp)) unlinkSync(tmp);
   }
@@ -214,8 +265,7 @@ function validate(projects) {
       if (!server.id || serverIds.has(server.id)) return 'Chaque serveur doit avoir un identifiant unique.';
       serverIds.add(server.id);
       if (!String(server.name || '').trim() || !String(server.command || '').trim()) return 'Le nom et la commande du serveur sont obligatoires.';
-      if (!(Number.isInteger(server.port) && server.port >= 1 && server.port <= 65535)) return 'Le port TCP doit être un nombre entre 1 et 65535.';
-      if (server.ramLimit === 0) return 'La limite RAM doit être supérieure à zéro.';
+      if (!(Number.isInteger(server.port) && server.port >= 0 && server.port <= 65535)) return 'Le port TCP doit être un nombre entre 0 et 65535 (0 signifie sans port).';
     }
   }
   return null;
@@ -231,6 +281,14 @@ export function connectProject({ root, name, command, port, serverName } = {}) {
   if (!root) return { ok: false, error: 'Le chemin du dossier est obligatoire.' };
   const inspected = inspectProject(root);
   if (!inspected.ok) return inspected;
+  try {
+    return withProjectLock(() => connectInspected(inspected, { name, command, port, serverName }));
+  } catch (error) {
+    return { ok: false, error: `Impossible d’enregistrer le projet : ${error.message}` };
+  }
+}
+
+function connectInspected(inspected, { name, command, port, serverName }) {
   const loaded = loadProjects();
   if (!loaded.ok) return loaded;
 
@@ -247,7 +305,7 @@ export function connectProject({ root, name, command, port, serverName } = {}) {
 
   const nextCommand = command?.trim() || inspected.command;
   const nextPort = port == null ? inspected.port : Number(port);
-  const nextName = (name || inspected.name).trim();
+  const nextName = (name ?? existing?.name ?? inspected.name).trim();
 
   let project;
   let created = false;
@@ -305,7 +363,7 @@ export function connectProject({ root, name, command, port, serverName } = {}) {
     detected: { command: inspected.command, port: inspected.port, portSource: inspected.portSource, framework: inspected.framework },
     project: publicProject(project),
     note: created
-      ? 'Enregistré. Si Sprint est ouvert, relance-le pour voir le projet : l’app garde sa liste en mémoire.'
+      ? 'Enregistré. Revenez dans la fenêtre Sprint pour actualiser la liste.'
       : 'Déjà branché. Le réglage demandé a été appliqué au projet existant, sans créer de doublon.',
   };
 }
@@ -335,7 +393,7 @@ const tools = [
         root: { type: 'string', description: 'Chemin absolu du dossier du projet.' },
         name: { type: 'string', description: 'Nom affiché. Par défaut, le nom du dossier.' },
         command: { type: 'string', description: 'Commande explicite. Sans cet argument, Sprint utilise celle détectée.' },
-        port: { type: 'integer', description: 'Port explicite. Sans cet argument, Sprint utilise celui détecté.' },
+        port: { type: 'integer', minimum: 0, maximum: 65535, description: 'Port explicite. Indiquez 0 pour un serveur sans port. Par défaut, le port est détecté.' },
         serverName: { type: 'string', description: 'Nom du serveur. Défaut : dev.' },
       },
       required: ['root'],
@@ -365,7 +423,7 @@ function handle(message) {
     reply(message.id, {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'sprint', version: '0.5.14' },
+      serverInfo: { name: 'sprint', version: '0.5.17' },
       instructions: INSTRUCTIONS,
     });
     return;

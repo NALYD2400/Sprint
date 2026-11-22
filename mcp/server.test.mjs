@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { inspectProject, connectProject, listProjects } from './server.mjs';
 
 const root = mkdtempSync(path.join(os.tmpdir(), 'sprint-mcp-'));
@@ -52,6 +53,26 @@ const listed = listProjects();
 assert.equal(listed.projects.length, 1);
 
 const file = path.join(config, 'projects.json');
+const inParallel = Array.from({ length: 4 }, (_, index) => {
+  const folder = path.join(root, 'desktop-' + index);
+  mkdirSync(folder);
+  return promisify(execFile)(process.execPath, [
+    '--input-type=module',
+    '-e',
+    `import { connectProject } from ${JSON.stringify(new URL('./server.mjs', import.meta.url).href)};
+    const result = connectProject({ root: process.argv[1], port: 0 });
+    console.log(JSON.stringify(result));`,
+    folder,
+  ]);
+});
+for (const { stdout } of await Promise.all(inParallel)) {
+  const result = JSON.parse(stdout);
+  assert.equal(result.ok, true, result.error);
+  assert.equal(result.project.servers[0].port, 0);
+}
+assert.equal(listProjects().projects.length, 5, 'parallel additions preserve all projects, including unrelated servers without a port');
+assert.equal(existsSync(`${file}.lock`), false);
+
 writeFileSync(file, '{ pas du json');
 const before = readFileSync(file, 'utf8');
 const refused = connectProject({ root: project });

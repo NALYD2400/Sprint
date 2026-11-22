@@ -11,13 +11,14 @@ const { entry, projects } = require('./fixtures/ui.cjs');
  const catalog=[...projects,{id:'api',name:'API locale',root:'D:/API',servers:[{id:'api-error',name:'API',command:'npm run api',port:4100,state:'error',lastExitReason:'Code de sortie 1',env:{}}]},{id:'empty',name:'Nouveau projet',root:'D:/Nouveau',servers:[]}];
  const uxEntry = entry.replace(JSON.stringify(projects),JSON.stringify(catalog)).replace('mockIPC((cmd, args) => {', `mockIPC((cmd, args) => {
   if (cmd === 'plugin:dialog|open') return 'D:/AddedProject';
-  if (cmd === 'save_projects_cmd') for (const project of args.projects || []) {
+  if (cmd === 'change_projects_cmd' && args.change.type === 'addProject') {
+    const { project } = args.change;
     if (project.root === 'D:/AddedProject') window.__projectIcons[project.id] = window.__projectIcons.project1;
   }
  `);
  let browser;
  try{
-  browser=await chromium.launch();const page=await browser.newPage({viewport:{width:1320,height:860}});const errors=[];
+  browser=await chromium.launch({channel:process.env.SPRINT_BROWSER_CHANNEL||(process.platform==='win32'?'msedge':undefined)});const page=await browser.newPage({viewport:{width:1320,height:860}});const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.route(base+'/**',async route=>{const url=new URL(route.request().url());if(url.pathname==='/__ux.js')return route.fulfill({contentType:'text/javascript',body:uxEntry});if(url.pathname==='/'){const response=await route.fetch();return route.fulfill({response,body:(await response.text()).replace(/src="\/src\/main\.jsx[^"]*"/,'src="/__ux.js"')});}return route.continue();});
   await page.route('https://api.github.com/**',route=>route.fulfill({json:{}}));

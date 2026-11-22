@@ -102,7 +102,7 @@ function ServerUptimeBadge({ serverId, isRunning }) {
 
 export default function ProjectsView({
   projects,
-  saveProjects,
+  saveProjectChange,
   onOpenTerminal,
   onOpenBrowser,
   onOpenEnvModal,
@@ -130,9 +130,7 @@ export default function ProjectsView({
     try {
       const list = await invoke('list_tunnels_cmd');
       setTunnels(Array.isArray(list) ? list : []);
-    } catch {
-      setTunnels([]);
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -212,6 +210,7 @@ export default function ProjectsView({
         });
       }
     } catch (e) {
+      await refreshTunnels();
       triggerToast({
         title: 'Échec du tunnel',
         message: String(e),
@@ -231,6 +230,7 @@ export default function ProjectsView({
         type: 'success',
       });
     } catch (e) {
+      await refreshTunnels();
       triggerToast({
         title: 'Arrêt impossible',
         message: String(e),
@@ -281,23 +281,15 @@ export default function ProjectsView({
     if (!confirmDelete) return;
 
     if (confirmDelete.type === 'project') {
-      if (await saveProjects(projects.filter((p) => p.id !== confirmDelete.projectId)) === false) return;
+      if (!await saveProjectChange({ type: 'removeProject', projectId: confirmDelete.projectId })) return;
       triggerToast({
         title: '🗑 Projet Supprimé',
         message: `« ${confirmDelete.name} » a été retiré de Sprint.`,
         type: 'warning',
       });
     } else if (confirmDelete.type === 'server') {
-      const updatedProjects = projects.map((prj) => {
-        if (prj.id === confirmDelete.projectId) {
-          return {
-            ...prj,
-            servers: (prj.servers || []).filter((s) => s.id !== confirmDelete.serverId),
-          };
-        }
-        return prj;
-      });
-      if (await saveProjects(updatedProjects) === false) return;
+      const { projectId, serverId } = confirmDelete;
+      if (!await saveProjectChange({ type: 'removeServer', projectId, serverId })) return;
       triggerToast({
         title: '🗑 Serveur Supprimé',
         message: `« ${confirmDelete.name} » a été retiré du projet.`,

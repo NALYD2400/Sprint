@@ -16,7 +16,7 @@ Superviseur de processus de développement local haute performance — moteur na
 - **Zone de notification Windows** : panneau d’accès rapide dans le thème de Sprint, liste et état des serveurs, lancement/arrêt individuel ou groupé, accès aux logs et aux paramètres. Un double-clic ouvre la fenêtre principale ; Échap ou un clic ailleurs ferme le panneau.
 - **Paramètres stables** : navigation fixe et contenu défilant indépendamment, enregistrement avec état d’erreur et nouvelle tentative, aperçu avant restauration d’une sauvegarde.
 - **Thème dynamique** : couleur d'accent personnalisable (#HEX), fond continu en clair et sombre, intensité, flou et vitesse réglables. Les animations réduites gardent un fond fixe.
-- **Auto-update** : téléchargement des releases GitHub avec validation du domaine source, vérification SHA-256 (SHA256SUMS.txt de la release) et dossier de staging aléatoire.
+- **Auto-update** : téléchargement des releases GitHub vérifié par SHA-256. Sprint contrôle de nouveau l’empreinte et vérifie la signature Windows avant l’exécution. Les installations non signées restent compatibles avec les releases non signées dont l’empreinte correspond au fichier SHA256SUMS.txt.
 
 ## Stack
 
@@ -99,3 +99,5 @@ src-tauri/src/
 ## Config utilisateur
 
 `%APPDATA%\sprint\projects.json` — écriture atomique (`.tmp` + remplacement) avec sauvegarde de la version précédente (`.bak`). Les fichiers `.env` sont écrits sans copie `.bak` pour ne pas dupliquer de secrets. Les configurations Portly sont migrées au premier lancement. Un fichier corrompu est mis en quarantaine (`projects.corrupt-*.json`) plutôt qu'écrasé.
+
+Sprint et le serveur MCP coordonnent leurs écritures dans le catalogue. Les modifications courantes préservent les autres projets, et le retour dans la fenêtre Sprint actualise la liste.

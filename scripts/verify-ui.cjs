@@ -161,7 +161,8 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.keyboard.press('Control+,');
     const nav = page.getByRole('navigation', { name: 'Sections des paramètres' });
     const initial = await nav.boundingBox();
-    for (const name of await nav.getByRole('button').allTextContents()) {
+    const sectionNames = await nav.getByRole('button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')));
+    for (const name of sectionNames) {
       await nav.getByRole('button', { name, exact: true }).click();
       const bounds = await nav.boundingBox();
       check(
@@ -294,12 +295,18 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.keyboard.press('Control+2');
     await page.getByRole('button', { name: 'Options du serveur', exact: true }).first().click();
     await page.getByRole('menuitem', { name: 'Modifier le serveur', exact: true }).click();
+    await page.getByRole('dialog').getByRole('textbox', { name: 'Nom', exact: true }).fill(projects[0].servers[0].name + ' modifié');
     await page.evaluate(() => (window.__failSave = true));
     await page.locator('form button[type="submit"]').click();
     await page.waitForTimeout(200);
     check(await page.getByRole('dialog').isVisible(), 'save failure preserves form');
     await page.evaluate(() => (window.__failSave = false));
     await page.locator('form button[type="submit"]').click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await page.getByRole('button', { name: 'Options du serveur', exact: true }).first().click();
+    await page.getByRole('menuitem', { name: 'Modifier le serveur', exact: true }).click();
+    await page.getByRole('dialog').getByRole('textbox', { name: 'Nom', exact: true }).fill(projects[0].servers[0].name);
+    await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await page.keyboard.press('Control+5');
     check(
@@ -560,7 +567,7 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
       'phone link preserves the current page path');
     await page.getByRole('button', { name: 'Fermer', exact: true }).click();
     await page.getByRole('button', { name: 'Mobile', exact: true }).click();
-    await page.locator('.preview-page > header').getByRole('button', { name: 'Logs', exact: true }).click();
+    await page.getByRole('button', { name: 'Afficher les logs', exact: true }).click();
     await page.screenshot({ path: art + '/sprint-preview-dark.png' });
     await setTheme('light');
     await page.screenshot({ path: art + '/sprint-preview-light.png' });
@@ -570,6 +577,7 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.evaluate(() => (window.__portOnline = false));
     await page.keyboard.press('Control+3');
     await page.getByRole('button', { name: 'Lancer le serveur', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Afficher les commandes', exact: true }).click();
     await page.evaluate(() => (window.__failStart = true));
     await page.getByRole('button', { name: 'Lancer le serveur', exact: true }).click();
     await page.waitForTimeout(100);
@@ -581,22 +589,24 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.waitForTimeout(100);
     check((await cmds()).filter((command) => command.cmd === 'start_server_cmd').length === startsBefore + 1,
       'preview double click launches only once');
-    check(await page.getByRole('combobox', { name: 'Serveur à prévisualiser' }).isDisabled(),
+    check(await page.locator('.preview-tab.is-active .preview-tab-stop').isDisabled(),
       'preview selection is stable while server starts');
     await page.evaluate(() => { window.__portOnline = true; document.dispatchEvent(new Event('visibilitychange')); });
     await page.locator('.preview-stage iframe').waitFor();
-    check(await page.locator('.preview-status').innerText() === 'Serveur en ligne',
+    check(await page.getByRole('button', { name: 'Tester sur téléphone' }).isEnabled(),
       'preview recovers automatically after a successful launch');
+    const stopPreview = page.locator('.preview-tab.is-active .preview-tab-stop');
     await page.evaluate(() => (window.__failStop = true));
-    await page.getByRole('button', { name: 'Arrêter', exact: true }).click();
+    await stopPreview.click();
     await page.waitForTimeout(100);
-    check(await page.getByRole('button', { name: 'Arrêter', exact: true }).isEnabled()
+    check(await stopPreview.isEnabled()
       && await page.locator('.preview-stage iframe').count() === 1, 'failed preview stop preserves the usable preview');
     await page.evaluate(() => { window.__failStop = false; window.__portOnline = false; });
-    await page.getByRole('button', { name: 'Arrêter', exact: true }).click();
+    await stopPreview.click();
     await page.getByRole('button', { name: 'Lancer le serveur', exact: true }).waitFor();
     await address.fill('localhost:3001/external'); await address.press('Enter');
-    check(await page.locator('.preview-status').innerText() === 'Adresse externe', 'external page is distinguished from selected server');
+    check(await page.locator('.preview-tab-select[aria-current="page"]').innerText() === projects[0].servers[0].name,
+      'navigating to an external address preserves the selected server');
     check(await page.getByRole('button', { name: 'Tester sur téléphone' }).isDisabled(), 'external preview does not share the wrong local server');
     check(await page.locator('.preview-stage iframe').count() === 1, 'external page can load when selected server is offline');
     await page.getByRole('button', { name: 'Ouvrir dans le navigateur', exact: true }).last().click();
@@ -675,6 +685,11 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.getByText('La mise à jour est prête', {exact: true}).waitFor();
     check((await cmds()).filter((command) => command.cmd === 'download_update_cmd' && command.args.url === updateUrl).length === 2,
       'update fallback uses the Sprint installer filename');
+    await page.evaluate(() => { window.__failInstall = true; });
+    await page.getByRole('button', {name: 'Installer et relancer Sprint', exact: true}).click();
+    await page.getByText('Installateur refusé', {exact: true}).waitFor();
+    check((await cmds()).some(({cmd, args}) => cmd === 'install_update_and_relaunch_cmd' && !Object.keys(args || {}).length),
+      'installation uses the verified backend download without a path from the interface');
     await page.getByRole('button', {name: 'Fermer la fenêtre de mise à jour', exact: true}).click();
     await page.unroute('https://api.github.com/repos/NALYD2400/Sprint/releases/latest');
     // Bulk stop of a project waits for explicit confirmation before sending any stop command.

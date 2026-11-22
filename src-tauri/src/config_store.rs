@@ -1,5 +1,7 @@
+use crate::project_lock::ProjectLock;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 static CONFIG_WRITE_LOCK: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
 
@@ -84,6 +86,49 @@ pub struct ProjectConfig {
     pub servers: Vec<ServerConfig>,
 }
 
+#[derive(Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub(crate) enum ProjectChange {
+    AddProject {
+        project: ProjectConfig,
+    },
+    EditProject {
+        project_id: String,
+        name: Option<String>,
+        color: Option<String>,
+    },
+    RemoveProject {
+        project_id: String,
+    },
+    AddServer {
+        project_id: String,
+        server: ServerConfig,
+    },
+    EditServer {
+        project_id: String,
+        server_id: String,
+        name: Option<String>,
+        command: Option<String>,
+        port: Option<u16>,
+        #[serde(default, deserialize_with = "ram_limit_patch")]
+        ram_limit: Option<Option<u32>>,
+    },
+    RemoveServer {
+        project_id: String,
+        server_id: String,
+    },
+}
+
+fn ram_limit_patch<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Option<u32>>, D::Error> {
+    Option::<u32>::deserialize(deserializer).map(Some)
+}
+
 pub fn get_config_dir() -> PathBuf {
     let base = dirs_next::config_dir().unwrap_or_else(|| PathBuf::from("."));
     let dir = base.join("sprint");
@@ -91,8 +136,13 @@ pub fn get_config_dir() -> PathBuf {
         let legacy = base.join("portly");
         if legacy.exists() {
             let _ = fs::create_dir_all(&dir);
-            if let Ok(content) = fs::read_to_string(legacy.join("projects.json")) {
-                let _ = fs::write(dir.join("projects.json"), content);
+            let projects_file = dir.join("projects.json");
+            if let Ok(_guard) = ProjectLock::acquire(&projects_file) {
+                if !projects_file.exists() {
+                    if let Ok(content) = fs::read_to_string(legacy.join("projects.json")) {
+                        let _ = atomic_write(&projects_file, &content);
+                    }
+                }
             }
             if let Ok(content) = fs::read_to_string(legacy.join("settings.json")) {
                 let _ = fs::write(dir.join("settings.json"), content);
@@ -139,65 +189,179 @@ fn write_atomically(path: &Path, contents: &str, keep_backup: bool) -> Result<()
     let _write_guard = CONFIG_WRITE_LOCK.lock();
     let tmp_path = with_suffix(path, "tmp");
 
-    fs::write(&tmp_path, contents)
-        .map_err(|e| format!("Erreur écriture {}: {}", tmp_path.display(), e))?;
+    let result = (|| {
+        fs::write(&tmp_path, contents)
+            .map_err(|e| format!("Erreur écriture {}: {}", tmp_path.display(), e))?;
+        if keep_backup && path.exists() {
+            let bak_path = with_suffix(path, "bak");
+            fs::copy(path, &bak_path)
+                .map_err(|e| format!("Erreur sauvegarde {}: {}", bak_path.display(), e))?;
+        }
+        fs::rename(&tmp_path, path)
+            .map_err(|e| format!("Erreur finalisation {}: {}", path.display(), e))
+    })();
 
-    if keep_backup && path.exists() {
-        let bak_path = with_suffix(path, "bak");
-        // Keep the current file readable until the final atomic replacement.
-        fs::copy(path, &bak_path)
-            .map_err(|e| format!("Erreur sauvegarde {}: {}", bak_path.display(), e))?;
-    }
-
-    if let Err(e) = fs::rename(&tmp_path, path) {
-        // Ne laisse pas de copie du contenu traîner à côté du fichier cible.
+    if result.is_err() {
         let _ = fs::remove_file(&tmp_path);
-        return Err(format!("Erreur finalisation {}: {}", path.display(), e));
     }
-    Ok(())
+    result
 }
 
 pub fn load_projects() -> Vec<ProjectConfig> {
     let file = get_projects_file();
-    if file.exists() {
-        if let Ok(content) = fs::read_to_string(&file) {
-            match serde_json::from_str::<Vec<ProjectConfig>>(&content) {
-                Ok(mut projects) => {
-                    for prj in &mut projects {
-                        for srv in &mut prj.servers {
-                            srv.state = "stopped".to_string();
-                            if srv.ram_limit == Some(0) {
-                                srv.ram_limit = None;
-                            }
-                        }
+    match read_projects(&file) {
+        Ok(projects) => projects,
+        Err(error) if error.kind() == ErrorKind::InvalidData => {
+            // Relire sous verrou avant de déplacer le fichier : MCP a pu le remplacer.
+            let Ok(_guard) = ProjectLock::acquire(&file) else {
+                return Vec::new();
+            };
+            match read_projects(&file) {
+                Ok(projects) => projects,
+                Err(error) if error.kind() == ErrorKind::InvalidData => {
+                    let stamp = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_nanos();
+                    let quarantine = file.with_file_name(format!("projects.corrupt-{stamp}.json"));
+                    match fs::rename(&file, &quarantine) {
+                        Ok(()) => eprintln!(
+                            "Sprint: catalogue illisible ({error}), déplacé dans {}",
+                            quarantine.display()
+                        ),
+                        Err(reason) => eprintln!(
+                            "Sprint: impossible d’isoler le catalogue illisible : {reason}"
+                        ),
                     }
-                    return projects;
+                    Vec::new()
                 }
-                Err(e) => {
-                    let quarantine = get_config_dir().join(format!(
-                        "projects.corrupt-{}.json",
-                        std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map(|d| d.as_secs())
-                            .unwrap_or(0)
-                    ));
-                    let _ = fs::rename(&file, &quarantine);
-                    eprintln!(
-                        "Sprint: projects.json illisible ({}) — mis en quarantaine dans {}",
-                        e,
-                        quarantine.display()
-                    );
+                Err(error) => {
+                    eprintln!("Sprint: impossible de lire le catalogue : {error}");
+                    Vec::new()
                 }
             }
         }
+        Err(error) => {
+            eprintln!("Sprint: impossible de lire le catalogue : {error}");
+            Vec::new()
+        }
     }
-    Vec::new()
 }
 
+fn read_projects(file: &Path) -> std::io::Result<Vec<ProjectConfig>> {
+    let contents = match fs::read_to_string(file) {
+        Ok(contents) => contents,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
+    let mut projects: Vec<ProjectConfig> = serde_json::from_str(&contents)
+        .map_err(|error| std::io::Error::new(ErrorKind::InvalidData, error))?;
+    for server in projects.iter_mut().flat_map(|project| &mut project.servers) {
+        server.state = "stopped".into();
+        if server.ram_limit == Some(0) {
+            server.ram_limit = None;
+        }
+    }
+    Ok(projects)
+}
+
+/// Réservé à la restauration explicite d'une sauvegarde.
 pub fn save_projects(projects: &[ProjectConfig]) -> Result<(), String> {
+    let file = get_projects_file();
+    let _guard = ProjectLock::acquire(&file)?;
+    persist_projects(&file, projects)
+}
+
+pub(crate) fn change_projects(change: ProjectChange) -> Result<Vec<ProjectConfig>, String> {
+    change_projects_at(&get_projects_file(), change)
+}
+
+fn change_projects_at(file: &Path, change: ProjectChange) -> Result<Vec<ProjectConfig>, String> {
+    let _guard = ProjectLock::acquire(file)?;
+    let mut projects = read_projects(file)
+        .map_err(|error| format!("Impossible de lire le catalogue Sprint : {error}"))?;
+    apply_project_change(&mut projects, change)?;
+    persist_projects(file, &projects)?;
+    Ok(projects)
+}
+
+fn apply_project_change(
+    projects: &mut Vec<ProjectConfig>,
+    change: ProjectChange,
+) -> Result<(), String> {
+    fn find_project<'a>(
+        projects: &'a mut [ProjectConfig],
+        id: &str,
+    ) -> Result<&'a mut ProjectConfig, String> {
+        projects
+            .iter_mut()
+            .find(|project| project.id == id)
+            .ok_or_else(|| "Ce projet ne figure plus dans Sprint.".into())
+    }
+
+    match change {
+        ProjectChange::AddProject { project } => projects.push(project),
+        ProjectChange::EditProject {
+            project_id,
+            name,
+            color,
+        } => {
+            let project = find_project(projects, &project_id)?;
+            if let Some(name) = name {
+                project.name = name;
+            }
+            if let Some(color) = color {
+                project.color = color;
+            }
+        }
+        ProjectChange::RemoveProject { project_id } => {
+            projects.retain(|project| project.id != project_id);
+        }
+        ProjectChange::AddServer { project_id, server } => {
+            find_project(projects, &project_id)?.servers.push(server);
+        }
+        ProjectChange::EditServer {
+            project_id,
+            server_id,
+            name,
+            command,
+            port,
+            ram_limit,
+        } => {
+            let server = find_project(projects, &project_id)?
+                .servers
+                .iter_mut()
+                .find(|server| server.id == server_id)
+                .ok_or("Ce serveur ne figure plus dans Sprint.")?;
+            if let Some(name) = name {
+                server.name = name;
+            }
+            if let Some(command) = command {
+                server.command = command;
+            }
+            if let Some(port) = port {
+                server.port = port;
+            }
+            if let Some(ram_limit) = ram_limit {
+                server.ram_limit = ram_limit;
+            }
+        }
+        ProjectChange::RemoveServer {
+            project_id,
+            server_id,
+        } => {
+            if let Ok(project) = find_project(projects, &project_id) {
+                project.servers.retain(|server| server.id != server_id);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn persist_projects(file: &Path, projects: &[ProjectConfig]) -> Result<(), String> {
     validate_projects(projects)?;
     let json = serde_json::to_string_pretty(projects).map_err(|e| e.to_string())?;
-    atomic_write(&get_projects_file(), &json)
+    atomic_write(file, &json)
 }
 
 fn validate_projects(projects: &[ProjectConfig]) -> Result<(), String> {
@@ -314,6 +478,49 @@ mod validation_tests {
     }
 
     #[test]
+    fn edits_preserve_external_projects_and_untouched_server_fields() {
+        let directory = tempfile::tempdir().unwrap();
+        let file = directory.path().join("projects.json");
+        let mut first = project();
+        first.servers[0].port = 0;
+        first.servers[0].ram_limit = None;
+        let mut external = project();
+        external.id = "mcp-project".into();
+        external.servers[0].id = "mcp-server".into();
+        persist_projects(&file, &[first, external]).unwrap();
+
+        let edit = serde_json::from_value(serde_json::json!({
+            "type": "editServer", "projectId": "project", "serverId": "server", "name": "Bureau"
+        }))
+        .unwrap();
+        let saved = change_projects_at(&file, edit).unwrap();
+        assert_eq!(saved[1].id, "mcp-project");
+        let server = &saved[0].servers[0];
+        assert_eq!(server.name, "Bureau");
+        assert_eq!(server.port, 0);
+        assert_eq!(server.ram_limit, None);
+    }
+
+    #[test]
+    fn ram_limit_patch_distinguishes_missing_values_from_explicit_removal() {
+        let mut project = project();
+        project.servers[0].ram_limit = Some(500);
+        let mut projects = vec![project];
+        for (fields, expected) in [
+            (serde_json::json!({"name": "Bureau"}), Some(500)),
+            (serde_json::json!({"ramLimit": null}), None),
+        ] {
+            let mut change = serde_json::json!({ "type": "editServer", "projectId": "project", "serverId": "server" });
+            change
+                .as_object_mut()
+                .unwrap()
+                .extend(fields.as_object().unwrap().clone());
+            apply_project_change(&mut projects, serde_json::from_value(change).unwrap()).unwrap();
+            assert_eq!(projects[0].servers[0].ram_limit, expected);
+        }
+    }
+
+    #[test]
     fn concurrent_writes_preserve_the_current_file_and_previous_backup() {
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -349,7 +556,10 @@ mod validation_tests {
         atomic_write(&base, "BASE=1").unwrap();
         atomic_write(&local, "LOCAL=1").unwrap();
         atomic_write(&local, "LOCAL=2").unwrap();
-        assert_eq!(fs::read_to_string(with_suffix(&local, "bak")).unwrap(), "LOCAL=1");
+        assert_eq!(
+            fs::read_to_string(with_suffix(&local, "bak")).unwrap(),
+            "LOCAL=1"
+        );
         assert!(!with_suffix(&base, "bak").exists());
         assert_eq!(fs::read_to_string(&base).unwrap(), "BASE=1");
         assert_ne!(with_suffix(&base, "tmp"), with_suffix(&local, "tmp"));

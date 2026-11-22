@@ -13,7 +13,7 @@ export default function WorkspaceMain({ shell }) {
     setActiveTab,
     projects,
     projectIcons,
-    saveProjects,
+    saveProjectChange,
     reloadProjects,
     prefs,
     updatePrefs,
@@ -66,7 +66,7 @@ export default function WorkspaceMain({ shell }) {
               <ProjectsView
                 projects={projects}
                 projectIcons={projectIcons}
-                saveProjects={saveProjects}
+                saveProjectChange={saveProjectChange}
                 favoriteProjectIds={prefs.favoriteProjectIds}
                 onToggleFavorite={toggleFavoriteProject}
                 onOpenTerminal={handleOpenTerminal}

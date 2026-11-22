@@ -33,7 +33,7 @@ export function useShell() {
   const [prefs, setPrefs] = useState(loadPrefs);
   const [settingsSection, setSettingsSection] = useState('appearance');
 
-  const { projects, saveProjects, reload: reloadProjects, loading } = useProjects();
+  const { projects, saveProjectChange, reload: reloadProjects, loading } = useProjects();
   const projectIcons = useProjectIcons(projects);
 
   const consumeBrowserTarget = useCallback(() => setBrowserTarget({ serverId: null, url: null }), []);
@@ -82,6 +82,9 @@ export function useShell() {
     });
     subscribe('tray-action-error', ({ payload }) => {
       triggerToast({ title: 'Action impossible', message: payload, type: 'error' });
+    });
+    subscribe('shutdown-error', ({ payload }) => {
+      triggerToast({ title: 'Fermeture impossible', message: payload, type: 'error' });
     });
     return () => {
       disposed = true;
@@ -174,7 +177,7 @@ export function useShell() {
     setBrowserTarget({ serverId, url });
     setActiveTab('browser');
   };
-  const handleAddProject = (newProject) => saveProjects([...projects, newProject]);
+  const handleAddProject = (project) => saveProjectChange({ type: 'addProject', project });
 
   return {
     activeTab,
@@ -204,7 +207,7 @@ export function useShell() {
     setSettingsSection,
     projects,
     projectIcons,
-    saveProjects,
+    saveProjectChange,
     reloadProjects,
     loading,
     activeServersCount,

@@ -3798,7 +3798,7 @@ dependencies = [
 
 [[package]]
 name = "sprint"
-version = "0.5.16"
+version = "0.5.17"
 dependencies = [
  "base64 0.22.1",
  "dirs-next",
@@ -3818,6 +3818,7 @@ dependencies = [
  "tauri-plugin-global-shortcut",
  "tauri-plugin-notification",
  "tauri-plugin-single-instance",
+ "tempfile",
  "tokio",
 ]
 

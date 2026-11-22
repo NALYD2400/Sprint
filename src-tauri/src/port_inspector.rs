@@ -105,7 +105,15 @@ pub fn kill_pid(pid: u32) -> Result<(), String> {
 
     match output {
         Ok(out) if out.status.success() => Ok(()),
-        Ok(out) => Err(String::from_utf8_lossy(&out.stderr).trim().to_string()),
+        Ok(out) => {
+            let details = String::from_utf8_lossy(&out.stderr);
+            let details = details.trim();
+            Err(if details.is_empty() {
+                format!("taskkill a échoué ({})", out.status)
+            } else {
+                details.to_string()
+            })
+        }
         Err(e) => Err(e.to_string()),
     }
 }

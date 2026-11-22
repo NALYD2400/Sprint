@@ -2,8 +2,9 @@ pub mod config_store;
 mod env_files;
 mod port_inspector;
 mod process_manager;
-mod project_scanner;
 mod project_icons;
+mod project_lock;
+mod project_scanner;
 mod shortcut;
 mod system;
 mod system_metrics;
@@ -12,13 +13,14 @@ mod tunnel;
 mod updater;
 
 use config_store::{
-    load_projects, load_settings, save_projects, save_settings, AppSettings, ProjectConfig,
+    change_projects, load_projects, load_settings, save_projects, save_settings, AppSettings,
+    ProjectChange, ProjectConfig,
 };
 use parking_lot::Mutex;
 use process_manager::ProcessManager;
 use project_scanner::{detect_stack, get_git_branch, DetectedStack};
 use std::collections::HashMap;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 /// Fenêtres Windows lancées sans console (évite un terminal qui clignote).
 pub(crate) const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -27,10 +29,11 @@ pub struct AppState {
     pub process_manager: ProcessManager,
 }
 
-pub(crate) fn shutdown_all_managed_processes(app: &AppHandle) {
+pub(crate) fn shutdown_all_managed_processes(app: &AppHandle) -> Result<(), String> {
+    tunnel::stop_all_tunnels()?;
     let state = app.state::<Mutex<AppState>>();
     state.lock().process_manager.stop_all_servers();
-    tunnel::stop_all_tunnels();
+    Ok(())
 }
 
 #[tauri::command]
@@ -41,44 +44,67 @@ fn hide_window_cmd(window: tauri::Window) {
 #[tauri::command]
 async fn exit_app(app: AppHandle) -> Result<(), String> {
     let app_handle = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        shutdown_all_managed_processes(&app_handle);
-    })
-    .await
-    .map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || shutdown_all_managed_processes(&app_handle))
+        .await
+        .map_err(|e| e.to_string())??;
     app.exit(0);
     Ok(())
 }
 
 #[tauri::command]
 async fn get_projects_cmd(app: AppHandle) -> Result<Vec<ProjectConfig>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let mut projects = load_projects();
-        let active = app.state::<Mutex<AppState>>()
-            .lock().process_manager.get_active_pids();
-        for prj in &mut projects {
-            for server in &mut prj.servers {
-                if active.contains_key(&server.id) {
-                    server.state = "running".to_string();
-                }
-            }
-            prj.branch = get_git_branch(&prj.root);
-            if prj.framework.is_none() {
-                let stack = detect_stack(&prj.root);
-                prj.framework = Some(stack.framework);
-            }
+    tauri::async_runtime::spawn_blocking(move || present_projects(&app, load_projects()))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+fn present_projects(app: &AppHandle, mut projects: Vec<ProjectConfig>) -> Vec<ProjectConfig> {
+    for project in &mut projects {
+        project.branch = get_git_branch(&project.root);
+        if project.framework.is_none() {
+            project.framework = Some(detect_stack(&project.root).framework);
         }
-        projects
-    })
-    .await
-    .map_err(|e| e.to_string())
+    }
+
+    let active = app
+        .state::<Mutex<AppState>>()
+        .lock()
+        .process_manager
+        .get_active_pids();
+    for server in projects.iter_mut().flat_map(|project| &mut project.servers) {
+        server.state = if active.contains_key(&server.id) {
+            "running"
+        } else {
+            "stopped"
+        }
+        .into();
+    }
+    projects
 }
 
 #[tauri::command]
-fn save_projects_cmd(app: AppHandle, projects: Vec<ProjectConfig>) -> Result<(), String> {
-    save_projects(&projects)?;
-    tray_menu::request_refresh(&app);
-    Ok(())
+async fn change_projects_cmd(
+    app: AppHandle,
+    change: ProjectChange,
+) -> Result<Vec<ProjectConfig>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let projects = change_projects(change)?;
+        tray_menu::request_refresh(&app);
+        Ok(present_projects(&app, projects))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn save_projects_cmd(app: AppHandle, projects: Vec<ProjectConfig>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        save_projects(&projects)?;
+        tray_menu::request_refresh(&app);
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -131,7 +157,9 @@ fn mcp_server_path_cmd() -> Result<String, String> {
 fn display_existing_path(path: &std::path::Path) -> String {
     let absolute = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let text = absolute.to_string_lossy();
-    text.strip_prefix(r"\\?\").unwrap_or(text.as_ref()).to_string()
+    text.strip_prefix(r"\\?\")
+        .unwrap_or(text.as_ref())
+        .to_string()
 }
 
 #[tauri::command]
@@ -210,8 +238,12 @@ pub fn run() {
                 } else {
                     let app = window.app_handle().clone();
                     tauri::async_runtime::spawn_blocking(move || {
-                        shutdown_all_managed_processes(&app);
-                        app.exit(0);
+                        match shutdown_all_managed_processes(&app) {
+                            Ok(()) => app.exit(0),
+                            Err(error) => {
+                                let _ = app.emit("shutdown-error", error);
+                            }
+                        }
                     });
                 }
             }
@@ -222,6 +254,7 @@ pub fn run() {
             tray_menu::tray_action_cmd,
             exit_app,
             get_projects_cmd,
+            change_projects_cmd,
             save_projects_cmd,
             get_settings_cmd,
             save_settings_cmd,

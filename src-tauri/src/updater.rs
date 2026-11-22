@@ -1,9 +1,9 @@
 //! Téléchargement et installation des mises à jour depuis les releases GitHub.
 
-use crate::{shutdown_all_managed_processes, CREATE_NO_WINDOW};
+use crate::{shutdown_all_managed_processes, tunnel, CREATE_NO_WINDOW};
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::process::Command;
 use tauri::AppHandle;
 
 /// Domaines autorisés pour le téléchargement des mises à jour.
@@ -17,9 +17,21 @@ const UPDATE_HOSTS: &[&str] = &[
 const CHECKSUMS_FILE_NAME: &str = "SHA256SUMS.txt";
 const MAX_CHECKSUMS_BYTES: usize = 64 * 1024;
 
-/// Script de remplacement lancé après la fermeture de Sprint. Il lit `SPRINT_INSTALLER` et `SPRINT_EXE`
-/// dans l'environnement (voir `install_update_and_relaunch_cmd`).
-const UPDATE_SCRIPT: &str = "Start-Sleep -Seconds 2; $inst = $env:SPRINT_INSTALLER; $exe = $env:SPRINT_EXE; try { $p = Start-Process -FilePath $inst -ArgumentList '/S' -PassThru -ErrorAction Stop; $p.WaitForExit() } catch { Start-Process -FilePath $inst -ArgumentList '/S' -Verb RunAs -Wait }; Remove-Item -LiteralPath (Split-Path $inst) -Recurse -Force -ErrorAction SilentlyContinue; if (Test-Path $exe) { Start-Process -FilePath $exe }";
+const UPDATE_SCRIPT: &str = include_str!("install_update.ps1");
+
+struct VerifiedInstaller {
+    directory: tempfile::TempDir,
+    sha256: String,
+}
+
+impl VerifiedInstaller {
+    fn path(&self) -> PathBuf {
+        self.directory.path().join("Sprint_setup.exe")
+    }
+}
+
+static VERIFIED_INSTALLER: tokio::sync::Mutex<Option<VerifiedInstaller>> =
+    tokio::sync::Mutex::const_new(None);
 
 /// URL d'entrée : uniquement une release du dépôt Sprint. Les hôtes de fichiers
 /// GitHub ne sont acceptés qu'en redirection (voir `is_allowed_update_url`).
@@ -91,8 +103,8 @@ async fn fetch_verified_installer(
     app: &AppHandle,
     client: &reqwest::Client,
     url: &reqwest::Url,
-    staging_dir: &std::path::Path,
-) -> Result<PathBuf, String> {
+    installer_path: &std::path::Path,
+) -> Result<String, String> {
     use sha2::{Digest, Sha256};
     use tauri::Emitter;
     use tokio::io::AsyncWriteExt;
@@ -119,7 +131,10 @@ async fn fetch_verified_installer(
     }
     let checksums = String::from_utf8_lossy(&checksums_bytes);
     let expected = expected_sha256(&checksums, &file_name).ok_or_else(|| {
-        format!("Empreinte de {} absente de SHA256SUMS.txt : mise à jour refusée.", file_name)
+        format!(
+            "Empreinte de {} absente de SHA256SUMS.txt : mise à jour refusée.",
+            file_name
+        )
     })?;
 
     let mut response = client
@@ -133,8 +148,10 @@ async fn fetch_verified_installer(
     }
 
     let total_size = response.content_length().unwrap_or(0);
-    let installer_path = staging_dir.join("Sprint_setup.exe");
-    let mut file = tokio::fs::File::create(&installer_path)
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(installer_path)
         .await
         .map_err(|e| format!("Erreur création fichier: {}", e))?;
 
@@ -199,35 +216,32 @@ async fn fetch_verified_installer(
     if actual != expected {
         return Err("Empreinte SHA-256 de l'installateur incorrecte : fichier rejeté.".into());
     }
-    Ok(installer_path)
+    Ok(expected)
 }
 
 #[tauri::command]
-pub async fn download_update_cmd(app: AppHandle, url: String) -> Result<String, String> {
+pub async fn download_update_cmd(app: AppHandle, url: String) -> Result<(), String> {
     if !is_sprint_release_url(&url) {
         return Err("URL de téléchargement refusée : seules les releases GitHub de NALYD2400/Sprint sont autorisées.".into());
     }
     let parsed = reqwest::Url::parse(&url).map_err(|e| format!("URL invalide: {}", e))?;
     let client = update_http_client()?;
 
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let staging_dir =
-        std::env::temp_dir().join(format!("sprint_update_{}_{}", std::process::id(), nonce));
-    tokio::fs::create_dir_all(&staging_dir)
-        .await
+    let mut pending = VERIFIED_INSTALLER
+        .try_lock()
+        .map_err(|_| "Une mise à jour est déjà en cours.")?;
+    *pending = None;
+    let directory = tempfile::Builder::new()
+        .prefix("sprint_update_")
+        .tempdir()
         .map_err(|e| format!("Erreur création du dossier temporaire: {}", e))?;
-
-    match fetch_verified_installer(&app, &client, &parsed, &staging_dir).await {
-        Ok(installer_path) => Ok(installer_path.to_string_lossy().to_string()),
-        Err(error) => {
-            // Un échec ne laisse aucun fichier partiel dans le dossier temporaire.
-            let _ = tokio::fs::remove_dir_all(&staging_dir).await;
-            Err(error)
-        }
-    }
+    let mut installer = VerifiedInstaller {
+        directory,
+        sha256: String::new(),
+    };
+    installer.sha256 = fetch_verified_installer(&app, &client, &parsed, &installer.path()).await?;
+    *pending = Some(installer);
+    Ok(())
 }
 
 fn clean_path_str(path: &std::path::Path) -> String {
@@ -236,67 +250,78 @@ fn clean_path_str(path: &std::path::Path) -> String {
 }
 
 #[tauri::command]
-pub async fn install_update_and_relaunch_cmd(
-    app: AppHandle,
-    installer_path: String,
-) -> Result<(), String> {
-    let path = PathBuf::from(&installer_path);
-
-    let temp = std::env::temp_dir();
-    let is_in_temp = path
-        .parent()
-        .is_some_and(|parent| parent.starts_with(&temp));
-    let parent_name_ok = path
-        .parent()
-        .and_then(|p| p.file_name())
-        .is_some_and(|n| {
-            n.to_string_lossy().starts_with("sprint_update_")
-                || n.to_string_lossy().starts_with("portly_update_")
-        });
-    let is_exe = path
-        .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("exe"));
-
-    if !is_in_temp || !parent_name_ok || !is_exe || !path.is_file() {
-        return Err("Installateur invalide ou introuvable.".into());
-    }
-
+pub async fn install_update_and_relaunch_cmd(app: AppHandle) -> Result<(), String> {
+    let mut pending = VERIFIED_INSTALLER
+        .try_lock()
+        .map_err(|_| "Une mise à jour est déjà en cours.")?;
+    let installer = pending
+        .as_ref()
+        .ok_or("Téléchargez et vérifiez la mise à jour avant de l’installer.")?;
+    let mut validate = installer_command(installer, true)?;
+    let mut launch = installer_command(installer, false)?;
     let app_handle = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        shutdown_all_managed_processes(&app_handle);
+        let verification = validate
+            .output()
+            .map_err(|error| format!("Vérification de l’installateur impossible : {error}"))?;
+        if !verification.status.success() {
+            let error = String::from_utf8_lossy(&verification.stderr);
+            return Err(format!("Installateur refusé : {}", error.trim()));
+        }
+        shutdown_all_managed_processes(&app_handle)?;
+        if let Err(error) = launch.spawn() {
+            tunnel::cancel_shutdown();
+            return Err(format!("Impossible de démarrer la mise à jour : {error}"));
+        }
+        Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|error| error.to_string())??;
 
-    let current_exe = std::env::current_exe().unwrap_or_default();
-    let installer_clean = clean_path_str(&path);
-    let exe_clean = clean_path_str(&current_exe);
+    // L'installateur sera supprimé par le processus qui le lance, après la fermeture de Sprint.
+    if let Some(installer) = pending.take() {
+        let _ = installer.directory.keep();
+    }
+    app.exit(0);
+    Ok(())
+}
 
-    // Les chemins sont transmis par l'environnement, jamais interpolés dans le script :
-    // PowerShell ne peut ainsi interpréter aucun caractère d'un nom de fichier.
-    std::process::Command::new("powershell")
+fn installer_command(
+    installer: &VerifiedInstaller,
+    validate_only: bool,
+) -> Result<Command, String> {
+    let windows =
+        PathBuf::from(std::env::var_os("SystemRoot").ok_or("Répertoire Windows introuvable.")?);
+    let current_exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    let powershell = windows.join("System32/WindowsPowerShell/v1.0");
+    let mut command = Command::new(powershell.join("powershell.exe"));
+    command
         .args([
             "-NoProfile",
+            "-NonInteractive",
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
             UPDATE_SCRIPT,
         ])
-        .env("SPRINT_INSTALLER", &installer_clean)
-        .env("SPRINT_EXE", &exe_clean)
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .map_err(|e| format!("Impossible d'exécuter la mise à jour: {}", e))?;
-
-    app.exit(0);
-    Ok(())
+        .env("SPRINT_INSTALLER", clean_path_str(&installer.path()))
+        .env("PSModulePath", powershell.join("Modules"))
+        .env("SPRINT_INSTALLER_SHA256", &installer.sha256)
+        .env("SPRINT_EXE", clean_path_str(&current_exe))
+        .env("SPRINT_UPDATE_PARENT", std::process::id().to_string())
+        .env(
+            "SPRINT_UPDATE_VALIDATE_ONLY",
+            if validate_only { "1" } else { "0" },
+        )
+        .creation_flags(CREATE_NO_WINDOW);
+    Ok(command)
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        expected_sha256, installer_file_name, is_allowed_update_url, is_sprint_release_url,
-        UPDATE_SCRIPT,
+        expected_sha256, installer_command, installer_file_name, is_allowed_update_url,
+        is_sprint_release_url, VerifiedInstaller, UPDATE_SCRIPT,
     };
 
     #[test]
@@ -306,20 +331,71 @@ mod tests {
         assert!(!UPDATE_SCRIPT.contains("'C:"));
     }
 
+    #[test]
+    fn windows_verifies_the_staged_file_again_before_launch() {
+        use sha2::{Digest, Sha256};
+
+        let bytes = std::fs::read(std::env::current_exe().unwrap()).unwrap();
+        let installer = VerifiedInstaller {
+            directory: tempfile::tempdir().unwrap(),
+            sha256: format!("{:x}", Sha256::digest(&bytes)),
+        };
+        std::fs::write(installer.path(), bytes).unwrap();
+        let valid = installer_command(&installer, true)
+            .unwrap()
+            .output()
+            .unwrap();
+        assert!(
+            valid.status.success(),
+            "{}",
+            String::from_utf8_lossy(&valid.stderr)
+        );
+
+        std::fs::write(installer.path(), b"altered after download").unwrap();
+        let invalid = installer_command(&installer, true)
+            .unwrap()
+            .output()
+            .unwrap();
+        assert!(!invalid.status.success());
+        assert!(String::from_utf8_lossy(&invalid.stderr).contains("depuis son téléchargement"));
+    }
+
     const HASH: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
     #[test]
     fn finds_hash_for_the_exact_installer_name() {
-        let sums = format!("{HASH}  Sprint_0.5.5_x64-setup.exe\n{}  Sprint_portable_0.5.5_x64.exe\n", "a".repeat(64));
-        assert_eq!(expected_sha256(&sums, "Sprint_0.5.5_x64-setup.exe").as_deref(), Some(HASH));
-        assert_eq!(expected_sha256(&format!("{}  *Sprint_0.5.5_x64-setup.exe", HASH.to_uppercase()), "Sprint_0.5.5_x64-setup.exe").as_deref(), Some(HASH));
+        let sums = format!(
+            "{HASH}  Sprint_0.5.5_x64-setup.exe\n{}  Sprint_portable_0.5.5_x64.exe\n",
+            "a".repeat(64)
+        );
+        assert_eq!(
+            expected_sha256(&sums, "Sprint_0.5.5_x64-setup.exe").as_deref(),
+            Some(HASH)
+        );
+        assert_eq!(
+            expected_sha256(
+                &format!("{}  *Sprint_0.5.5_x64-setup.exe", HASH.to_uppercase()),
+                "Sprint_0.5.5_x64-setup.exe"
+            )
+            .as_deref(),
+            Some(HASH)
+        );
         assert_eq!(expected_sha256(&sums, "Sprint_0.5.5_x64-setup.ex"), None);
     }
 
     #[test]
     fn rejects_malformed_checksum_lines() {
-        assert_eq!(expected_sha256("abc  Sprint_setup.exe", "Sprint_setup.exe"), None);
-        assert_eq!(expected_sha256(&format!("{}  Sprint_setup.exe", "g".repeat(64)), "Sprint_setup.exe"), None);
+        assert_eq!(
+            expected_sha256("abc  Sprint_setup.exe", "Sprint_setup.exe"),
+            None
+        );
+        assert_eq!(
+            expected_sha256(
+                &format!("{}  Sprint_setup.exe", "g".repeat(64)),
+                "Sprint_setup.exe"
+            ),
+            None
+        );
         assert_eq!(expected_sha256(HASH, "Sprint_setup.exe"), None);
     }
 
@@ -334,23 +410,42 @@ mod tests {
         assert!(!is_sprint_release_url(
             "https://objects.githubusercontent.com/github.com/NALYD2400/Sprint/a.exe"
         ));
-        assert!(!is_sprint_release_url("https://github.com/NALYD2400/Sprint/archive/refs/heads/main.zip"));
+        assert!(!is_sprint_release_url(
+            "https://github.com/NALYD2400/Sprint/archive/refs/heads/main.zip"
+        ));
     }
 
     #[test]
     fn only_official_https_hosts_are_allowed() {
-        assert!(is_allowed_update_url("https://github.com/owner/repo/releases/download/v1/a.exe"));
-        assert!(is_allowed_update_url("https://objects.githubusercontent.com/x/a.exe"));
+        assert!(is_allowed_update_url(
+            "https://github.com/owner/repo/releases/download/v1/a.exe"
+        ));
+        assert!(is_allowed_update_url(
+            "https://objects.githubusercontent.com/x/a.exe"
+        ));
         assert!(!is_allowed_update_url("http://github.com/owner/repo/a.exe"));
-        assert!(!is_allowed_update_url("https://github.com.attacker.example/a.exe"));
-        assert!(!is_allowed_update_url("https://attacker.example/github.com/a.exe"));
+        assert!(!is_allowed_update_url(
+            "https://github.com.attacker.example/a.exe"
+        ));
+        assert!(!is_allowed_update_url(
+            "https://attacker.example/github.com/a.exe"
+        ));
     }
 
     #[test]
     fn installer_name_comes_from_the_release_url() {
-        let url = reqwest::Url::parse("https://github.com/owner/repo/releases/download/v1/Sprint_1_x64-setup.exe").unwrap();
-        assert_eq!(installer_file_name(&url).as_deref(), Some("Sprint_1_x64-setup.exe"));
+        let url = reqwest::Url::parse(
+            "https://github.com/owner/repo/releases/download/v1/Sprint_1_x64-setup.exe",
+        )
+        .unwrap();
+        assert_eq!(
+            installer_file_name(&url).as_deref(),
+            Some("Sprint_1_x64-setup.exe")
+        );
         let checksums = url.join("SHA256SUMS.txt").unwrap();
-        assert_eq!(checksums.as_str(), "https://github.com/owner/repo/releases/download/v1/SHA256SUMS.txt");
+        assert_eq!(
+            checksums.as_str(),
+            "https://github.com/owner/repo/releases/download/v1/SHA256SUMS.txt"
+        );
     }
 }

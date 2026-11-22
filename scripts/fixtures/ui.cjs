@@ -46,8 +46,10 @@ projects[0].servers.push(
 const mcpServerPath = 'C:\\Sprint Dev\\mcp\\server.mjs';
 const entry = `import { mockIPC, mockWindows } from '/node_modules/@tauri-apps/api/mocks.js';
 import { emit } from '/node_modules/@tauri-apps/api/event.js';
+import { applyProjectChange } from '/src/lib/projectChanges.js';
 window.__layoutCommands = []; window.__commands = []; window.__emit = emit; window.__failSave = false; window.__trayActivity = 0;
 window.__toasts = [];
+window.__projects = ${JSON.stringify(projects)};
 window.__ports = [
   { port: 135, pid: 900, process_name: 'svchost.exe', protocol: 'TCP', local_address: '[0.0.0.0]:135' },
   { port: 445, pid: 4, process_name: 'System', protocol: 'TCP', local_address: '[::]:445' },
@@ -59,7 +61,13 @@ window.__ports = [
 window.addEventListener('sprint-toast', event => window.__toasts.push(event.detail));
 mockIPC((cmd, args) => {
   window.__layoutCommands.push(cmd); window.__commands.push({cmd,args}); if (cmd === "save_projects_cmd" && window.__failSave) throw new Error("Test: disque indisponible"); if (cmd === "get_tray_state_cmd") return {projects: [{"id":"p1","name":"SR Editer","servers":[{"id":"s1","name":"Application desktop","port":4313,"state":"running"},{"id":"s2","name":"Site web local","port":3000,"state":"stopped"}]},{"id":"p2","name":"SiteStudio","servers":[{"id":"s3","name":"Web Dev Server","port":5173,"state":"running"},{"id":"s4","name":"Tauri Desktop","port":0,"state":"stopped"}]}],running_count:2,activity:window.__trayActivity};
-  if (cmd === 'get_projects_cmd') return ${JSON.stringify(projects)};
+  if (cmd === 'get_projects_cmd') return window.__projects;
+  if (cmd === 'save_projects_cmd') { window.__projects = args.projects; return null; }
+  if (cmd === 'change_projects_cmd') {
+    if (window.__failSave) throw new Error('Test: disque indisponible');
+    window.__projects = applyProjectChange(window.__projects, args.change);
+    return window.__projects;
+  }
   if (cmd === 'get_project_icons_cmd') return window.__projectIcons || {};
   if (cmd === 'get_ports_cmd') { if (window.__failPorts) throw new Error('Scan indisponible'); return window.__ports; }
   if (cmd === 'ping_port_cmd') return window.__portOnline !== false;
@@ -70,6 +78,7 @@ mockIPC((cmd, args) => {
 
   if (cmd === 'get_local_ip_cmd') return '192.168.1.5';
   if (cmd === 'mcp_server_path_cmd') return ${JSON.stringify(mcpServerPath)};
+  if (cmd === 'install_update_and_relaunch_cmd' && window.__failInstall) throw new Error('Installateur refusé');
   if (cmd === 'get_settings_cmd') return null;
   if (cmd === 'plugin:dialog|open') return 'D:/Workspace/Projet';
   if (cmd === 'detect_stack_cmd') return {framework: 'React', default_dev_cmd: 'npm run dev', package_manager: 'npm'};

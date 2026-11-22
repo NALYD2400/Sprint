@@ -1,7 +1,7 @@
 {
   "name": "sprint",
   "private": true,
-  "version": "0.5.16",
+  "version": "0.5.17",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -35,6 +35,6 @@
     "@vitejs/plugin-react": "^6.0.4",
     "oxlint": "^1.75.0",
     "playwright": "^1.63.0",
-    "vite": "^8.2.0"
+    "vite": "^8.2.4"
   }
 }

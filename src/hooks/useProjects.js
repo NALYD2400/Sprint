@@ -4,6 +4,7 @@ import { triggerToast } from '../lib/toastBus';
 import { isManualStop, unmarkManualStop } from '../lib/serverLifecycle';
 import { startServer } from '../lib/serverActions';
 import { isTauriEnv, subscribeTauri } from '../lib/tauri';
+import { applyProjectChange } from '../lib/projectChanges';
 
 function findServer(projects, serverId) {
   for (const project of projects) {
@@ -18,52 +19,70 @@ export function useProjects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const projectsRef = useRef(projects);
+  const catalogQueue = useRef(Promise.resolve());
+  const statusRevision = useRef(0);
+  const serverStatusRevisions = useRef(new Map());
 
-  useEffect(() => {
-    projectsRef.current = projects;
-  }, [projects]);
+  const enqueue = (work) => {
+    const pending = catalogQueue.current.then(work);
+    catalogQueue.current = pending.catch(() => {});
+    return pending;
+  };
 
-  const fetchProjects = async () => {
+  const replaceProjects = (snapshot, previousStatusRevision) => {
+    const liveServers = new Map(projectsRef.current.flatMap(project => project.servers || [])
+      .map(server => [server.id, server]));
+    const next = snapshot.map(project => ({
+      ...project,
+      servers: (project.servers || []).map(server => {
+        const live = liveServers.get(server.id);
+        if (!live) return server;
+        const statusChanged = serverStatusRevisions.current.get(server.id) > previousStatusRevision;
+        if (!statusChanged && live.state !== server.state) return server;
+        return { ...server, state: live.state, pid: live.pid, lastExitReason: live.lastExitReason };
+      }),
+    }));
+    projectsRef.current = next;
+    setProjects(next);
+  };
+
+  const fetchProjects = () => enqueue(async () => {
+    const previousStatusRevision = statusRevision.current;
     try {
       if (isTauriEnv()) {
         const { invoke } = await import('@tauri-apps/api/core');
         const res = await invoke('get_projects_cmd');
-        setProjects(res || []);
+        replaceProjects(res || [], previousStatusRevision);
       }
     } catch (e) {
       console.warn('Failed to load projects:', e.message);
     } finally {
       setLoading(false);
     }
-  };
+  });
 
-  const saveProjects = async (updatedProjects) => {
+  const saveProjectChange = (change) => enqueue(async () => {
+    const previousStatusRevision = statusRevision.current;
     try {
+      let updatedProjects;
       if (isTauriEnv()) {
         const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('save_projects_cmd', { projects: updatedProjects });
+        updatedProjects = await invoke('change_projects_cmd', { change });
+      } else {
+        updatedProjects = applyProjectChange(projectsRef.current, change);
       }
-      setProjects(updatedProjects.map((project) => ({
-        ...project,
-        servers: (project.servers || []).map((server) => {
-          const live = projectsRef.current
-            .flatMap((item) => item.servers || [])
-            .find((item) => item.id === server.id);
-          return live
-            ? { ...server, state: live.state, pid: live.pid, lastExitReason: live.lastExitReason }
-            : server;
-        }),
-      })));
+      replaceProjects(updatedProjects, previousStatusRevision);
       return true;
     } catch (e) {
       triggerToast({ title: 'Projets non enregistrés', message: String(e), type: 'error' });
       return false;
     }
-  };
+  });
 
   useEffect(() => {
     fetchProjects();
     if (!isTauriEnv()) return undefined;
+    window.addEventListener('focus', fetchProjects);
 
     const restartTimestamps = new Map();
     const restartTimers = new Map();
@@ -127,6 +146,7 @@ export function useProjects() {
     track(subscribeTauri('server-status-changed', (event) => {
       if (disposed) return;
       const { server_id, state, pid, intentional, exit_code, exit_error } = event.payload;
+      serverStatusRevisions.current.set(server_id, ++statusRevision.current);
       if (state === 'running' || intentional) {
         clearTimeout(restartTimers.get(server_id));
         restartTimers.delete(server_id);
@@ -174,10 +194,11 @@ export function useProjects() {
 
     return () => {
       disposed = true;
+      window.removeEventListener('focus', fetchProjects);
       restartTimers.forEach(clearTimeout);
       unlisteners.forEach((unsubscribe) => unsubscribe());
     };
   }, []);
 
-  return { projects, saveProjects, reload: fetchProjects, loading };
+  return { projects, saveProjectChange, reload: fetchProjects, loading };
 }

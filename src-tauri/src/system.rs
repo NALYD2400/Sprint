@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn cmd_paths_must_be_existing_directories_without_shell_metacharacters() {
-        let dir = std::env::temp_dir();
+        let dir = std::path::PathBuf::from(std::env::var_os("SystemRoot").unwrap());
         assert!(is_safe_cmd_path(&dir.to_string_lossy()));
         assert!(!is_safe_cmd_path(&dir.join("missing-folder").to_string_lossy()));
         assert!(!is_safe_cmd_path(&format!("{}\\x&calc", dir.display())));

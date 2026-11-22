@@ -11,7 +11,6 @@ export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
   const [latestVersion, setLatestVersion] = useState('');
   const [releaseNotes, setReleaseNotes] = useState('');
   const [downloadUrl, setDownloadUrl] = useState('');
-  const [installerPath, setInstallerPath] = useState('');
   const [progress, setProgress] = useState(0);
   const [downloadedBytes, setDownloadedBytes] = useState('0');
   const [totalBytes, setTotalBytes] = useState('... Mo');
@@ -117,9 +116,8 @@ export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
       const targetUrl =
         downloadUrl ||
         `https://github.com/${GITHUB_REPO}/releases/download/v${latestVersion}/Sprint_${latestVersion}_x64-setup.exe`;
-      const downloadedPath = await invoke('download_update_cmd', { url: targetUrl });
+      await invoke('download_update_cmd', { url: targetUrl });
       if (!mountedRef.current) return;
-      setInstallerPath(downloadedPath);
       setStatus('completed');
     } catch (err) {
       if (!mountedRef.current) return;
@@ -133,7 +131,7 @@ export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
   const handleRestart = async () => {
     setStatus('installing');
     try {
-      await invoke('install_update_and_relaunch_cmd', { installerPath });
+      await invoke('install_update_and_relaunch_cmd');
     } catch (e) {
       if (!mountedRef.current) return;
       setErrorMessage(typeof e === 'string' ? e : e?.message || String(e));

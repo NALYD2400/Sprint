@@ -360,13 +360,16 @@ fn run_action(app: &AppHandle, activity: u8, server_id: Option<String>) -> Resul
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         refresh(&app);
-        if activity == QUITTING {
-            shutdown_all_managed_processes(&app);
-            app.exit(0);
-            return;
-        }
         let mut errors = Vec::new();
-        if activity == STARTING {
+        if activity == QUITTING {
+            match shutdown_all_managed_processes(&app) {
+                Ok(()) => {
+                    app.exit(0);
+                    return;
+                }
+                Err(error) => errors.push(error),
+            }
+        } else if activity == STARTING {
             for project in load_projects() {
                 for server in project.servers {
                     if server_id.as_ref().is_some_and(|id| id != &server.id) {

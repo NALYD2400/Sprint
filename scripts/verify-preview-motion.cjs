@@ -23,7 +23,8 @@ const { entry } = require('./fixtures/ui.cjs');
     await page.route('https://api.github.com/**', (route) => route.fulfill({ json: {} }));
     await page.addInitScript(() => localStorage.setItem('sprint_ui_prefs', JSON.stringify({ theme: 'dark', reduceMotion: 'off' })));
     await page.goto(base);
-    await page.getByRole('button', { name: 'Aperçu web', exact: true }).first().click();
+    await page.getByRole('heading', { name: 'Tableau de bord', exact: true }).waitFor();
+    await page.keyboard.press('Control+3');
     await page.getByRole('heading', { name: 'Aperçu web' }).waitFor();
 
     async function sample(button, panel) {

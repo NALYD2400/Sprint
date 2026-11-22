@@ -2,6 +2,7 @@ import { readStoredSetting } from '../../lib/settingsStorage';
 import React, { useRef } from 'react';
 import { Square, Minus, Sun, X, createLucideIcon } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { triggerToast } from '../../lib/toastBus';
 import logo from '../../assets/navigation/logo.webp';
 
 // Lucide 0.468.0 Moon (ISC), matching the icon used by Nivra.
@@ -60,7 +61,11 @@ export default function TitleBar({ runningCount = 0, dark = true, onToggleTheme 
         // Fermeture complète : quitte et nettoie tous les process gérés
         await invoke('exit_app');
       }
-    } catch {
+    } catch (error) {
+      if (!minimizeToTray) {
+        triggerToast({ title: 'Fermeture impossible', message: String(error), type: 'error' });
+        return;
+      }
       try {
         const win = await getWin();
         if (win && typeof win.hide === 'function') {

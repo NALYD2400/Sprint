@@ -1,6 +1,6 @@
 [package]
 name = "sprint"
-version = "0.5.16"
+version = "0.5.17"
 description = "Sprint Developer Supervisor & Process Manager"
 authors = ["Dylan"]
 edition = "2021"
@@ -28,6 +28,7 @@ reqwest = { version = "0.12", features = ["json"] }
 dirs-next = "2.0"
 netstat2 = "0.9"
 sha2 = "0.10"
+tempfile = "3"
 parking_lot = "0.12"
 base64 = "0.22.1"
 image = { version = "0.25.10", default-features = false, features = ["png", "ico", "jpeg", "webp"] }

@@ -3,11 +3,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { Folder, X, Plus, Sparkles, Server } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
-
-const isValidPort = (value) => {
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 1 && n <= 65535;
-};
+import { isValidProjectPort } from '../../lib/projectChanges';
 
 export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
   const [folderPath, setFolderPath] = useState('');
@@ -57,8 +53,8 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
     if (saving || !folderPath || !projectName.trim()) return;
     if (!serverCommand.trim()) { setError('La commande de lancement est obligatoire.'); return; }
 
-    if (!isValidPort(serverPort)) {
-      setError('Le port TCP doit être un nombre entre 1 et 65535.');
+    if (!isValidProjectPort(serverPort)) {
+      setError('Indiquez un port TCP entre 1 et 65535, ou laissez vide pour un serveur sans port.');
       return;
     }
 
@@ -73,7 +69,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
           id: `srv_${crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`}`,
           name: 'dev',
           command: serverCommand.trim(),
-          port: parseInt(serverPort, 10),
+          port: Number(serverPort),
           ramLimit: 500,
           state: 'stopped',
           env: {},
@@ -202,8 +198,9 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
                     <input
                       id="prj-port"
                       type="number"
-                      min="1"
+                      min="0"
                       max="65535"
+                      placeholder="Aucun"
                       value={serverPort}
                       onChange={(e) => setServerPort(e.target.value)}
                       className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-white font-mono focus:outline-none"

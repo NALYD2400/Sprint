@@ -20,7 +20,7 @@ const { entry } = require('./fixtures/ui.cjs');
   try {
     await server.listen();
     const base = 'http://127.0.0.1:' + server.httpServer.address().port;
-    browser = await chromium.launch();
+    browser = await chromium.launch({ channel: process.env.SPRINT_BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) });
     const page = await browser.newPage({ viewport: { width: 1320, height: 860 } });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));

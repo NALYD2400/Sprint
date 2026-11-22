@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, ChevronRight } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import { isValidProjectPort } from '../../lib/projectChanges';
 
 const SUGGESTED_SCRIPTS = [
   'npm run dev',
@@ -14,11 +15,6 @@ const SUGGESTED_SCRIPTS = [
   'yarn dev',
 ];
 
-const isValidPort = (value) => {
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 1 && n <= 65535;
-};
-
 /**
  * Formulaire unifié d'ajout et d'édition de serveur
  * (remplace AddServerModal + EditServerModal, ~90% dupliqués).
@@ -29,8 +25,7 @@ export default function ServerFormModal({
   onClose,
   project,
   server,
-  projects,
-  saveProjects,
+  saveProjectChange,
 }) {
   const isEdit = mode === 'edit';
   const [name, setName] = useState('');
@@ -40,10 +35,10 @@ export default function ServerFormModal({
   const [error, setError] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
-  const persist = async updated => {
+  const persist = async change => {
     setSaving(true);
     try {
-      const saved = await saveProjects(updated);
+      const saved = await saveProjectChange(change);
       if (saved === false) setError('Les modifications n’ont pas été enregistrées. Réessayez.');
       return saved;
     } finally { setSaving(false); }
@@ -56,8 +51,8 @@ export default function ServerFormModal({
     if (isEdit && server) {
       setName(server.name || 'dev');
       setCommand(server.command || '');
-      setPort(server.port ? String(server.port) : '3000');
-      setRamLimit(server.ramLimit ? String(server.ramLimit) : '500');
+      setPort(server.port ? String(server.port) : '');
+      setRamLimit(server.ramLimit ? String(server.ramLimit) : '');
     } else {
       setName(`Serveur ${((project && project.servers) || []).length + 1}`);
       setCommand('npm run dev');
@@ -76,15 +71,15 @@ export default function ServerFormModal({
       setError('Le nom et la commande de démarrage sont obligatoires.');
       return;
     }
-    if (!isValidPort(port)) {
-      setError('Le port TCP doit être un nombre entre 1 et 65535.');
+    if (!isValidProjectPort(port)) {
+      setError('Indiquez un port TCP entre 1 et 65535, ou laissez vide pour un serveur sans port.');
       return;
     }
     // Limite RAM vide = Auto-Guard désactivé pour ce serveur
     const ramText = ramLimit.trim();
     let ram;
     if (ramText === '') {
-      ram = undefined;
+      ram = null;
     } else {
       ram = Number(ramText);
       if (!Number.isInteger(ram) || ram < 1 || ram > 4294967295) {
@@ -93,43 +88,22 @@ export default function ServerFormModal({
       }
     }
 
-    const portNum = parseInt(port, 10);
+    const fields = { name: name.trim(), command: command.trim(), port: Number(port), ramLimit: ram };
 
     if (isEdit && server) {
-      const updatedProjects = projects.map((prj) => {
-        if (prj.id !== project.id) return prj;
-        return {
-          ...prj,
-          servers: (prj.servers || []).map((srv) =>
-            srv.id === server.id
-              ? {
-                  ...srv,
-                  name: name.trim(),
-                  command: command.trim(),
-                  port: portNum,
-                  ramLimit: ram,
-                }
-              : srv
-          ),
-        };
-      });
-      if (await persist(updatedProjects) === false) return;
+      const previous = { ...server, port: server.port || 0, ramLimit: server.ramLimit || null };
+      const edits = Object.entries(fields).filter(([key, value]) => value !== previous[key]);
+      if (edits.length && !await persist({
+        type: 'editServer', projectId: project.id, serverId: server.id, ...Object.fromEntries(edits),
+      })) return;
     } else {
       const newServer = {
         id: `srv_${project.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        name: name.trim(),
-        command: command.trim(),
-        port: portNum,
-        ramLimit: ram,
+        ...fields,
         state: 'stopped',
         env: {},
       };
-      const updatedProjects = projects.map((prj) =>
-        prj.id === project.id
-          ? { ...prj, servers: [...(prj.servers || []), newServer] }
-          : prj
-      );
-      if (await persist(updatedProjects) === false) return;
+      if (!await persist({ type: 'addServer', projectId: project.id, server: newServer })) return;
     }
 
     onClose();
@@ -209,12 +183,11 @@ export default function ServerFormModal({
             <input
               id="srv-port"
               type="number"
-              required
-              min="1"
+              min="0"
               max="65535"
               value={port}
               onChange={(e) => setPort(e.target.value)}
-              placeholder="3000"
+              placeholder="Aucun"
               className={`${field} font-mono`}
             />
           </div>
