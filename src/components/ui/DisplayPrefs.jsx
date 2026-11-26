@@ -1,7 +1,6 @@
 import React from 'react';
 import { Type, Zap } from 'lucide-react';
 import { TEXT_SIZES } from '../../lib/prefs';
-import SettingRow from './SettingRow';
 
 function Segmented({ label, value, options, onChange, renderOption }) {
   return (
@@ -59,13 +58,6 @@ function Segmented({ label, value, options, onChange, renderOption }) {
 export default function DisplayPrefs({ prefs, onChange }) {
   return (
     <section className="space-y-6" aria-label="Apparence">
-      <SettingRow
-        title="Mode sombre"
-        description="Fond graphite, lueurs menthe et violettes. Basculez aussi via le bouton en haut à droite."
-        checked={prefs.theme !== 'light'}
-        onToggle={(dark) => onChange({ theme: dark ? 'dark' : 'light' })}
-      />
-
       <div className="space-y-2">
         <div className="text-[13px] font-medium text-zinc-200 flex items-center gap-2">
           <Type className="w-4 h-4 text-zinc-500" /> Taille du texte
@@ -84,16 +76,15 @@ export default function DisplayPrefs({ prefs, onChange }) {
         </div>
         <Segmented
           label="Animations"
-          value={prefs.reduceMotion === 'on' ? 'on' : 'off'}
+          value={prefs.reduceMotion ?? 'system'}
           options={[
+            { id: 'system', label: 'Selon Windows' },
             { id: 'off', label: 'Activées' },
             { id: 'on', label: 'Réduites' },
           ]}
           onChange={(reduceMotion) => onChange({ reduceMotion })}
         />
-        <p className="text-[12px] text-zinc-500">
-          Le menu et les changements de page restent en mouvement lent. « Réduites » les coupe.
-        </p>
+
       </div>
     </section>
   );

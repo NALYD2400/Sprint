@@ -1,7 +1,7 @@
 {
   "name": "sprint",
   "private": true,
-  "version": "0.5.18",
+  "version": "0.5.19",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -26,6 +26,7 @@
     "postcss": "^8.5.26",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {

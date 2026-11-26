@@ -666,7 +666,7 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     // A portable download must never replace the installer in the update flow.
     const updateUrl = 'https://github.com/NALYD2400/Sprint/releases/download/v9.0.0/Sprint_9.0.0_x64-setup.exe';
     await page.route('https://api.github.com/repos/NALYD2400/Sprint/releases/latest', (route) => route.fulfill({json: {
-      tag_name: 'v9.0.0', body: 'Version de test', assets: [
+      tag_name: 'v9.0.0', body: 'Version de test\n\n- **Interface** — Paramètres simplifiés.', assets: [
         {name: 'Sprint_9.0.0_x64-portable.exe', browser_download_url: updateUrl.replace('setup', 'portable')},
         {name: 'Sprint_9.0.0_x64-setup.exe', browser_download_url: updateUrl},
       ],
@@ -674,6 +674,8 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.keyboard.press('Control+,');
     await page.getByRole('navigation', {name: 'Sections des paramètres'}).getByRole('button', {name: 'À propos', exact: true}).click();
     await page.getByRole('button', {name: 'Mises à jour', exact: true}).click();
+    await page.locator('.update-notes li strong').waitFor();
+    check(await page.locator('.update-notes li strong').textContent() === 'Interface', 'release notes render bold text inside a list item');
     await page.getByRole('button', {name: 'Télécharger la mise à jour', exact: true}).click();
     await page.getByText('La mise à jour est prête', {exact: true}).waitFor();
     check((await cmds()).some((command) => command.cmd === 'download_update_cmd' && command.args.url === updateUrl),

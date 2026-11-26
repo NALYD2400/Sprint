@@ -262,7 +262,7 @@ export default function SettingsView({
     saveUpdatedSettings({ ...settings, [key]: value });
   };
   const categories = [
-    ['appearance', 'Apparence', 'Mode sombre, texte et animations.', Palette],
+    ['appearance', 'Apparence', 'Taille du texte et animations.', Palette],
     ['dashboard', 'Tableau de bord', 'Mesures et blocs affichés.', Activity],
     ['supervision', 'Serveurs & logs', 'Relance, journal et serveurs arrêtés.', SlidersHorizontal],
     ['system', 'Système', 'Raccourci, démarrage et notifications.', Monitor],
@@ -275,7 +275,6 @@ export default function SettingsView({
     <div className="page workspace-page settings-page">
       <PageHeader
         title="Paramètres" icon={<SprintNavIcon name="settings" active />}
-        lead="Une interface à votre façon."
         actions={
           <button className="quiet-button" onClick={() => setConfirmReset(true)}>
             <RotateCcw size={14} />
@@ -285,7 +284,7 @@ export default function SettingsView({
       />
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Sections des paramètres">
-          {categories.map(([id, label, description, Icon]) => (
+          {categories.map(([id, label, , Icon]) => (
             <button
               key={id}
               onClick={(event) => {
@@ -297,8 +296,8 @@ export default function SettingsView({
               aria-label={label}
               type="button"
             >
-              <span className="settings-nav-icon"><Icon size={16} aria-hidden="true" /></span>
-              <span className="settings-nav-copy"><span>{label}</span><small>{description}</small></span>
+              <Icon size={16} aria-hidden="true" />
+              <span>{label}</span>
             </button>
           ))}
         </nav>

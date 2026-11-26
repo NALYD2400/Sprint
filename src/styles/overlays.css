@@ -272,12 +272,16 @@
 .update-notes > div {
   max-height: 180px;
   overflow-y: auto;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 12px;
   line-height: 1.7;
   color: var(--text-mid);
 }
+.update-notes > div > * + * { margin-top: 0.65em; }
+.update-notes ul { list-style: disc; padding-inline-start: 1.5em; }
+.update-notes ol { list-style: decimal; padding-inline-start: 1.5em; }
+.update-notes li + li { margin-top: 0.35em; }
+.update-notes strong { color: var(--text-hi); font-weight: 600; }
 .update-actions {
   display: flex;
   justify-content: flex-end;

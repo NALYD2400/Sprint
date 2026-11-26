@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { DownloadCloud, RefreshCw, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import Modal from '../ui/Modal';
 import SprintNavIcon from '../layout/SprintNavIcon';
+import Markdown from 'react-markdown';
 import { GITHUB_REPO, isNewerVersion } from '../../lib/updates';
 
 export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
@@ -208,7 +209,7 @@ export default function AutoUpdateModal({ isOpen, onClose, currentVersion }) {
         {status === 'available' && (
           <section className="update-notes" aria-label="Notes de version">
             <h3>Notes de version</h3>
-            <div>{releaseNotes}</div>
+            <div><Markdown skipHtml allowedElements={['p', 'strong', 'em', 'ul', 'ol', 'li', 'code', 'pre', 'br', 'blockquote', 'h4']} unwrapDisallowed>{releaseNotes}</Markdown></div>
           </section>
         )}
         {status === 'downloading' && (
