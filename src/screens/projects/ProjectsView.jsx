@@ -25,6 +25,7 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { triggerToast } from '../../lib/toastBus';
+import { getServerStart, subscribeToUptime } from '../../lib/serverLifecycle';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import ServerControls from '../../components/ui/ServerControls';
 import useServerOperations from '../../hooks/useServerOperations';
@@ -58,46 +59,25 @@ function IconBtn({ title, onClick, children }) {
   );
 }
 
-const serverStartTimestamps = {};
+function formatUptime(serverId, now) {
+  const startTime = getServerStart(serverId) ?? now;
+  const diffSec = Math.max(0, Math.floor((now - startTime) / 1000));
+  if (diffSec < 60) return `${diffSec}s`;
+  if (diffSec < 3600) {
+    const m = Math.floor(diffSec / 60);
+    const s = diffSec % 60;
+    return `${m}m ${s}s`;
+  }
+  const h = Math.floor(diffSec / 3600);
+  const m = Math.floor((diffSec % 3600) / 60);
+  return `${h}h ${m}m`;
+}
 
-function ServerUptimeBadge({ serverId, isRunning }) {
-  const [uptimeStr, setUptimeStr] = useState('0s');
+function ServerUptimeBadge({ serverId }) {
+  const [uptime, setUptime] = useState(() => formatUptime(serverId, Date.now()));
+  useEffect(() => subscribeToUptime((now) => setUptime(formatUptime(serverId, now))), [serverId]);
 
-  useEffect(() => {
-    if (!isRunning) {
-      delete serverStartTimestamps[serverId];
-      setUptimeStr('0s');
-      return undefined;
-    }
-
-    if (!serverStartTimestamps[serverId]) {
-      serverStartTimestamps[serverId] = Date.now();
-    }
-
-    const update = () => {
-      const startTime = serverStartTimestamps[serverId];
-      const diffSec = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
-      if (diffSec < 60) {
-        setUptimeStr(`${diffSec}s`);
-      } else if (diffSec < 3600) {
-        const m = Math.floor(diffSec / 60);
-        const s = diffSec % 60;
-        setUptimeStr(`${m}m ${s}s`);
-      } else {
-        const h = Math.floor(diffSec / 3600);
-        const m = Math.floor((diffSec % 3600) / 60);
-        setUptimeStr(`${h}h ${m}m`);
-      }
-    };
-
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [serverId, isRunning]);
-
-  return (
-    <span>{uptimeStr}</span>
-  );
+  return <span className="text-xs font-mono stat-value text-zinc-500 mr-2">{uptime}</span>;
 }
 
 export default function ProjectsView({
@@ -241,11 +221,11 @@ export default function ProjectsView({
 
   const handleOpenVSCode = (path) =>
     invoke('open_vscode', { path }).catch((e) =>
-      triggerToast({ title: '⚠️ VS Code', message: String(e), type: 'error' })
+      triggerToast({ title: 'VS Code', message: String(e), type: 'error' })
     );
   const handleOpenExplorer = (path) =>
     invoke('open_explorer', { path }).catch((e) =>
-      triggerToast({ title: '⚠️ Explorateur', message: String(e), type: 'error' })
+      triggerToast({ title: 'Explorateur', message: String(e), type: 'error' })
     );
   const handleOpenBrowser = openUrl;
   const handleStartProjectServers = startProject;
@@ -283,7 +263,7 @@ export default function ProjectsView({
     if (confirmDelete.type === 'project') {
       if (!await saveProjectChange({ type: 'removeProject', projectId: confirmDelete.projectId })) return;
       triggerToast({
-        title: '🗑 Projet Supprimé',
+        title: 'Projet supprimé',
         message: `« ${confirmDelete.name} » a été retiré de Sprint.`,
         type: 'warning',
       });
@@ -291,7 +271,7 @@ export default function ProjectsView({
       const { projectId, serverId } = confirmDelete;
       if (!await saveProjectChange({ type: 'removeServer', projectId, serverId })) return;
       triggerToast({
-        title: '🗑 Serveur Supprimé',
+        title: 'Serveur supprimé',
         message: `« ${confirmDelete.name} » a été retiré du projet.`,
         type: 'warning',
       });
@@ -335,7 +315,6 @@ export default function ProjectsView({
     (acc, p) => acc + (p.servers || []).filter((s) => s.state === 'running').length,
     0
   );
-
   return (
     <div className="projects-page select-none pb-12 max-w-4xl mx-auto">
       {/* En-tête */}
@@ -639,11 +618,7 @@ export default function ProjectsView({
                             {srv.port > 0 && (
                               <span className="text-xs font-mono text-zinc-500 mr-2">:{srv.port}</span>
                             )}
-                            {isRunning && (
-                              <span className="text-xs font-mono text-zinc-500 mr-2">
-                                <ServerUptimeBadge serverId={srv.id} isRunning={isRunning} />
-                              </span>
-                            )}
+                            {isRunning && <ServerUptimeBadge serverId={srv.id} />}
 
                             {srv.port > 0 && isRunning && (
                               <IconBtn
@@ -672,7 +647,7 @@ export default function ProjectsView({
                                 className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
                                   isServerMenuOpen
                                     ? 'bg-white/[0.08] text-white'
-                                    : 'text-zinc-500 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover/row:opacity-100'
+                                    : 'text-zinc-500 hover:text-white hover:bg-white/[0.06]'
                                 }`}
                                 title="Options du serveur"
                                 aria-label="Options du serveur"

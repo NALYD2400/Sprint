@@ -6,7 +6,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
-use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+use sysinfo::{ProcessRefreshKind, RefreshKind, System, UpdateKind};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PortEntry {
@@ -80,7 +80,7 @@ pub fn get_active_ports() -> Result<Vec<PortEntry>, String> {
 /// localisé et fragile de `tasklist /FO CSV`).
 fn get_all_process_names() -> HashMap<u32, String> {
     let sys = System::new_with_specifics(
-        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+        RefreshKind::new().with_processes(ProcessRefreshKind::new().with_exe(UpdateKind::OnlyIfNotSet)),
     );
 
     sys.processes()

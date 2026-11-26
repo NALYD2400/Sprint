@@ -116,6 +116,10 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
           (level === 'info' && entry.isInfo)),
     );
   }, [displayLogs, filter, level]);
+  const hasFilteredError = useMemo(
+    () => filteredLogs.some((entry) => entry.isError),
+    [filteredLogs],
+  );
   useEffect(() => {
     setExpandedHistory(false);
     setFilter('');
@@ -222,7 +226,7 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
           </div>
           <div className="terminal-tools">
           <button className="quiet-button log-next-error" onClick={nextError}
-            disabled={!filteredLogs.some((entry) => entry.isError)} title="Aller à l’erreur suivante dans les résultats"
+            disabled={!hasFilteredError} title="Aller à l’erreur suivante dans les résultats"
             aria-label={`Erreur suivante · ${titlePrefix}`}><ArrowDown size={13} /> Erreur suivante</button>
 
           <button
@@ -315,7 +319,7 @@ function TerminalPanel({ server, titlePrefix = 'Console', onStart, pending, sele
                 }}
                 className="log-history-button"
               >
-                ▲ {hiddenByWindow} lignes plus anciennes masquées — cliquer pour tout afficher
+                ▲ {hiddenByWindow} lignes plus anciennes masquées · cliquer pour tout afficher
               </button>
             )}
             {visibleLogs.map((entry, i) => (

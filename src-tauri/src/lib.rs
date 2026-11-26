@@ -89,6 +89,7 @@ async fn change_projects_cmd(
 ) -> Result<Vec<ProjectConfig>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let projects = change_projects(change)?;
+        tray_menu::invalidate_icons(&app);
         tray_menu::request_refresh(&app);
         Ok(present_projects(&app, projects))
     })
@@ -100,6 +101,7 @@ async fn change_projects_cmd(
 async fn save_projects_cmd(app: AppHandle, projects: Vec<ProjectConfig>) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         save_projects(&projects)?;
+        tray_menu::invalidate_icons(&app);
         tray_menu::request_refresh(&app);
         Ok(())
     })

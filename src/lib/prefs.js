@@ -105,7 +105,11 @@ function applyTheme(nextTheme, reduced) {
 
 export function applyPrefs(prefs) {
   const root = document.documentElement;
-  const reduced = prefs.reduceMotion === 'on';
+  const reduced =
+    prefs.reduceMotion === 'on' ||
+    (prefs.reduceMotion !== 'off' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   root.dataset.motion = reduced ? 'reduce' : 'full';
   applyTheme(resolveTheme(prefs.theme), reduced);
   const size = TEXT_SIZES.find((s) => s.id === prefs.textSize) || TEXT_SIZES[1];

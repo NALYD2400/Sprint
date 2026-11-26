@@ -33,7 +33,7 @@ export default function SprintNavIcon({ name, active = false, mirrored = false }
   const src = icons[name];
   if (!src) return null;
   return (
-    <span aria-hidden="true" className={`relative block h-6 w-6 shrink-0 transition-transform duration-500 ${mirrored ? '-scale-x-100' : ''}`}>
+    <span aria-hidden="true" className={`relative block h-6 w-6 shrink-0 transition-transform duration-200 ${mirrored ? '-scale-x-100' : ''}`}>
       <img
         src={src}
         alt=""

@@ -56,7 +56,8 @@ export default function Sidebar({
 }) {
   return (
     <aside
-      className={`sidebar-shell ${collapsed ? 'is-collapsed' : ''} shrink-0 min-h-0 overflow-x-hidden overflow-y-auto pt-2 pb-3 flex flex-col justify-between gap-4 select-none z-10`}
+      data-tauri-drag-region="deep"
+      className={`sidebar-shell ${collapsed ? 'is-collapsed' : ''} shrink-0 min-h-0 overflow-x-hidden overflow-y-auto pt-2 pb-3 flex flex-col justify-between gap-4 select-none cursor-default z-10`}
       aria-label="Navigation principale"
     >
       <div className="sidebar-primary shrink-0">

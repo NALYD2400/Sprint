@@ -58,19 +58,10 @@ function Segmented({ label, value, options, onChange, renderOption }) {
 /** Réglages d'affichage : thème, taille du texte, animations. Effet immédiat. */
 export default function DisplayPrefs({ prefs, onChange }) {
   return (
-    <section className="space-y-6" aria-labelledby="display-prefs-title">
-      <div>
-        <h3 id="display-prefs-title" className="text-sm font-semibold text-zinc-50">
-          Affichage
-        </h3>
-        <p className="text-xs text-zinc-400 mt-1">
-          Les couleurs suivent le logo. Le soleil, à côté des boutons de la fenêtre, passe du sombre au clair.
-        </p>
-      </div>
-
+    <section className="space-y-6" aria-label="Apparence">
       <SettingRow
         title="Mode sombre"
-        description="Fond graphite, lueurs menthe et violettes."
+        description="Fond graphite, lueurs menthe et violettes. Basculez aussi via le bouton en haut à droite."
         checked={prefs.theme !== 'light'}
         onToggle={(dark) => onChange({ theme: dark ? 'dark' : 'light' })}
       />

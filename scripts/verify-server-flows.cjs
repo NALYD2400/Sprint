@@ -306,6 +306,24 @@ const { entry, projects } = require('./fixtures/ui.cjs');
     check(change.name === 'Application renommée' && !('port' in change) && !('ramLimit' in change),
       'server rename sends only the edited field and preserves a project added externally');
 
+    await page.keyboard.press('Control+n');
+    const addProject = page.getByRole('dialog', { name: 'Ajouter un projet' });
+    await addProject.getByRole('button', { name: 'Parcourir' }).click();
+    await addProject.getByLabel('Nom du projet').fill('Projet en cours de saisie');
+    await page.keyboard.press('Escape');
+    await addProject.waitFor({ state: 'hidden' });
+    await page.keyboard.press('Control+n');
+    check(await addProject.getByLabel('Dossier du projet').inputValue() === projects[0].root,
+      'reopening the add-project form keeps the selected folder');
+    check(await addProject.getByLabel('Nom du projet').inputValue() === 'Projet en cours de saisie',
+      'reopening the add-project form keeps the draft name');
+    await addProject.getByRole('button', { name: 'Ajouter le projet' }).click();
+    await addProject.waitFor({ state: 'hidden' });
+    await page.keyboard.press('Control+n');
+    check(await addProject.getByLabel('Dossier du projet').inputValue() === '',
+      'saving the project clears the draft for the next addition');
+    await page.keyboard.press('Escape');
+
     check(errors.length === 0, 'no browser errors');
     fs.writeFileSync(path.join(art, 'server-flows-report.json'), JSON.stringify({ checks: results.length, results, errors }, null, 2));
     console.log(JSON.stringify({ checks: results.length, errors }, null, 2));

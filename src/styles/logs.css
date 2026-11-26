@@ -126,8 +126,15 @@
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
-    padding-bottom: 6px;
+    padding-bottom: 8px;
+    scroll-padding-inline: 16px;
+    scrollbar-width: thin;
+    mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
     align-self: stretch;
+  }
+  .logs-header .preview-tabs-bar {
+    order: 3;
+    flex-basis: 100%;
   }
   .settings-nav button { flex-shrink: 0; }
   .settings-nav-copy small { display:none; }

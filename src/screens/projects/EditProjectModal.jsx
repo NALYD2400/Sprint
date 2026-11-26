@@ -61,8 +61,8 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
               <Edit3 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-white tracking-tight">Modifier le Projet</h2>
-              <p className="text-xs text-zinc-400">Nom et couleur thématique de la carte projet</p>
+              <h2 className="text-base font-semibold text-white tracking-tight">Modifier le projet</h2>
+              <p className="text-xs text-zinc-400">Nom et couleur de repère du projet</p>
             </div>
           </div>
           <button
@@ -82,7 +82,7 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
           {/* Project Name */}
           <div>
             <label htmlFor="edit-prj-name" className="block text-xs font-medium text-zinc-400 mb-1.5 font-mono">
-              Nom du Projet
+              Nom du projet
             </label>
             <input
               id="edit-prj-name"
@@ -98,7 +98,7 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
           {/* Project Color Palette */}
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-2 font-mono flex items-center gap-1.5">
-              <span>Couleur de la Puce Projet</span>
+              <span>Couleur du projet</span>
             </label>
             <div className="grid grid-cols-4 gap-2.5">
               {COLOR_PRESETS.map((presetHex) => {
@@ -110,12 +110,12 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
                     aria-label={`Couleur ${presetHex}`}
                     aria-pressed={isSelected}
                     onClick={() => setColor(presetHex)}
-                    className={`h-9 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
-                      isSelected ? 'ring-2 ring-white scale-105' : 'hover:scale-95 border-[var(--line)]'
+                    className={`h-9 rounded-lg border flex items-center justify-center transition-[transform,box-shadow] duration-150 ease-out cursor-pointer ${
+                      isSelected ? 'ring-2 ring-[#fff] scale-105' : 'hover:scale-95 border-[var(--line)]'
                     }`}
                     style={{ backgroundColor: presetHex }}
                   >
-                    {isSelected && <Check className="w-4 h-4 text-white" />}
+                    {isSelected && <Check className="w-4 h-4 text-[#fff]" />}
                   </button>
                 );
               })}
@@ -128,14 +128,14 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
               type="button"
               onClick={onClose}
             disabled={saving}
-              className="px-4 py-2.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 hover:text-white text-xs font-semibold border border-[var(--line)] transition-all cursor-pointer "
+              className="px-4 py-2.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 hover:text-white text-xs font-semibold border border-[var(--line)] transition-colors duration-150 cursor-pointer"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 rounded-lg theme-accent-btn text-white font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer "
+              className="px-5 py-2.5 rounded-lg theme-accent-btn font-semibold text-xs flex items-center gap-2 transition-[filter,transform] duration-150 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Enregistrer</span>

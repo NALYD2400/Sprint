@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import Modal from '../ui/Modal';
-import ColorBendsBackground from '../ui/ColorBendsBackground';
 import { triggerToast } from '../../lib/toastBus';
 import { performServerAction } from '../../lib/serverActions';
 import useServerOperations from '../../hooks/useServerOperations';
@@ -217,9 +216,6 @@ export default function CommandPaletteModal({
       panelClassName="command-palette-panel"
       backdropClassName="command-palette-backdrop"
     >
-      <div className="app-background" aria-hidden="true">
-        <ColorBendsBackground />
-      </div>
       <div className="command-palette" onKeyDown={handleKeyDown}>
         <h2 id={titleId} className="sr-only">
           Rechercher dans Sprint

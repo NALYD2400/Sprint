@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /** Keep the actual iframe viewport at the selected dimensions, scale only its presentation. */
 export default function PreviewFrame({ url, frameKey, width, height, fit = true, children, name, showCaption = false, onRetry, onOpenExternal }) {
@@ -12,17 +12,21 @@ export default function PreviewFrame({ url, frameKey, width, height, fit = true,
     const timer = setTimeout(() => setLoadState((state) => state === 'loading' ? 'slow' : state), 10000);
     return () => clearTimeout(timer);
   }, [url, frameKey, placeholder]);
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const el = host.current;
+    if (!el) return undefined;
+    const updateSize = (widthValue, heightValue) =>
+      setSize((previous) => (
+        previous.width === widthValue && previous.height === heightValue
+          ? previous
+          : { width: widthValue, height: heightValue }
+      ));
+    // Measure immediately on mount so dual/device viewports don't miss their first paint frame.
+    if (el.clientWidth > 0) updateSize(el.clientWidth, el.clientHeight);
     const observer = new ResizeObserver(([entry]) =>
-      setSize((previous) => {
-        const next = {
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        };
-        return previous.width === next.width && previous.height === next.height ? previous : next;
-      }),
+      updateSize(entry.contentRect.width, entry.contentRect.height),
     );
-    if (host.current) observer.observe(host.current);
+    observer.observe(el);
     return () => observer.disconnect();
   }, [showCaption]);
   const viewportWidth = width || Math.max(1, Math.floor(size.width));

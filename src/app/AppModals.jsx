@@ -1,12 +1,15 @@
-import AddProjectModal from '../screens/projects/AddProjectModal';
+import { lazy, Suspense, useState } from 'react';
 import CommandPaletteModal from '../components/modals/CommandPaletteModal';
-import EnvEditorModal from '../screens/projects/EnvEditorModal';
-import EditProjectModal from '../screens/projects/EditProjectModal';
-import ServerFormModal from '../screens/projects/ServerFormModal';
-import AutoUpdateModal from '../components/modals/AutoUpdateModal';
-import HelpModal from '../components/modals/HelpModal';
+
+const AddProjectModal = lazy(() => import('../screens/projects/AddProjectModal'));
+const EnvEditorModal = lazy(() => import('../screens/projects/EnvEditorModal'));
+const EditProjectModal = lazy(() => import('../screens/projects/EditProjectModal'));
+const ServerFormModal = lazy(() => import('../screens/projects/ServerFormModal'));
+const AutoUpdateModal = lazy(() => import('../components/modals/AutoUpdateModal'));
+const HelpModal = lazy(() => import('../components/modals/HelpModal'));
 
 export default function AppModals({ shell }) {
+  const [keepAddModalMounted, setKeepAddModalMounted] = useState(false);
   const {
     isAddModalOpen,
     setIsAddModalOpen,
@@ -30,13 +33,12 @@ export default function AppModals({ shell }) {
     setIsHelpOpen,
   } = shell;
 
+  if (isAddModalOpen && !keepAddModalMounted) {
+    setKeepAddModalMounted(true);
+  }
+
   return (
     <>
-      <AddProjectModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddProject={handleAddProject}
-      />
       <CommandPaletteModal
         isOpen={isPaletteOpen}
         onClose={() => setIsPaletteOpen(false)}
@@ -45,31 +47,54 @@ export default function AppModals({ shell }) {
         onSelectTab={setActiveTab}
         onAddProject={() => setIsAddModalOpen(true)}
       />
-      <EnvEditorModal
-        isOpen={!!envModalRoot}
-        projectRoot={envModalRoot}
-        onClose={() => setEnvModalRoot(null)}
-      />
-      <EditProjectModal
-        isOpen={!!editProjectTarget}
-        project={editProjectTarget}
-        saveProjectChange={saveProjectChange}
-        onClose={() => setEditProjectTarget(null)}
-      />
-      <ServerFormModal
-        mode={serverForm?.mode || 'add'}
-        isOpen={!!serverForm}
-        project={serverForm?.project}
-        server={serverForm?.server}
-        saveProjectChange={saveProjectChange}
-        onClose={() => setServerForm(null)}
-      />
-      <AutoUpdateModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
-        currentVersion={appVersion}
-      />
-      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <Suspense fallback={null}>
+        {keepAddModalMounted && (
+          <AddProjectModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            onAddProject={handleAddProject}
+            onAdded={() => {
+              setIsAddModalOpen(false);
+              setKeepAddModalMounted(false);
+            }}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {!!envModalRoot && (
+          <EnvEditorModal
+            isOpen
+            projectRoot={envModalRoot}
+            onClose={() => setEnvModalRoot(null)}
+          />
+        )}
+        {!!editProjectTarget && (
+          <EditProjectModal
+            isOpen
+            project={editProjectTarget}
+            saveProjectChange={saveProjectChange}
+            onClose={() => setEditProjectTarget(null)}
+          />
+        )}
+        {!!serverForm && (
+          <ServerFormModal
+            mode={serverForm.mode || 'add'}
+            isOpen
+            project={serverForm.project}
+            server={serverForm.server}
+            saveProjectChange={saveProjectChange}
+            onClose={() => setServerForm(null)}
+          />
+        )}
+        {isUpdateModalOpen && (
+          <AutoUpdateModal
+            isOpen
+            onClose={() => setIsUpdateModalOpen(false)}
+            currentVersion={appVersion}
+          />
+        )}
+        {isHelpOpen && <HelpModal isOpen onClose={() => setIsHelpOpen(false)} />}
+      </Suspense>
     </>
   );
 }

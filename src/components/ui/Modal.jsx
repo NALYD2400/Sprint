@@ -39,7 +39,7 @@ export default function Modal({
   maxWidth = 'max-w-lg',
   labelledBy,
   panelClassName = '',
-  backdropClassName = '',
+  backdropClassName = 'workspace-modal-backdrop',
   animateExit = false,
 }) {
   const [retained, setRetained] = useState(isOpen);
@@ -52,7 +52,7 @@ export default function Modal({
       setRetained(false);
       return undefined;
     }
-    const timeout = window.setTimeout(() => setRetained(false), 750);
+    const timeout = window.setTimeout(() => setRetained(false), 220);
     return () => window.clearTimeout(timeout);
   }, [isOpen, animateExit]);
 
@@ -151,7 +151,7 @@ export default function Modal({
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && dismissible) onClose();
       }}
-      className={`modal-backdrop fixed inset-0 z-50 bg-black/75 flex justify-center p-4 select-none animate-fadeIn ${backdropClassName} ${
+      className={`modal-backdrop fixed inset-0 z-50 flex justify-center p-4 select-none animate-fadeIn ${backdropClassName} ${
         align === 'top' ? 'items-start pt-20' : 'items-center'
       }`}
     >

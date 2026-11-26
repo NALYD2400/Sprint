@@ -1,4 +1,4 @@
-import { HelpContent } from '../../components/modals/HelpModal';
+import HelpContent from '../../components/modals/HelpContent';
 import AboutSettings from './AboutSettings';
 import StorageSettings from './StorageSettings';
 import SystemSettings from './SystemSettings';
@@ -104,14 +104,14 @@ export default function SettingsView({
         const updated = { ...settings, global_shortcut: value };
         saveUpdatedSettings(updated);
         triggerToast({
-          title: '⌨️ Raccourci Enregistré',
-          message: `Nouveau raccourci global: ${value}`,
+          title: 'Raccourci enregistré',
+          message: `Nouveau raccourci global : ${value}`,
           type: 'success',
         });
       })
       .catch((e) => {
         triggerToast({
-          title: '⚠️ Raccourci Refusé',
+          title: 'Raccourci refusé',
           message: String(e),
           type: 'error',
         });
@@ -124,7 +124,7 @@ export default function SettingsView({
       const updated = { ...settings, autostart: val };
       saveUpdatedSettings(updated);
       triggerToast({
-        title: val ? '🚀 Démarrage Windows Activé' : '⏹ Démarrage Windows Désactivé',
+        title: val ? 'Démarrage Windows activé' : 'Démarrage Windows désactivé',
         message: val
           ? 'Sprint se lancera automatiquement à la connexion.'
           : 'Sprint ne se lancera plus automatiquement.',
@@ -132,8 +132,8 @@ export default function SettingsView({
       });
     } catch (e) {
       triggerToast({
-        title: '⚠️ Échec du Réglage OS',
-        message: `Impossible de modifier le démarrage automatique: ${String(e)}`,
+        title: 'Réglage système impossible',
+        message: `Impossible de modifier le démarrage automatique : ${String(e)}`,
         type: 'error',
       });
     }
@@ -144,13 +144,13 @@ export default function SettingsView({
       const path = await invoke('open_config_dir_cmd');
       setConfigDirPath(path);
       triggerToast({
-        title: '📂 Dossier de Configuration',
+        title: 'Dossier de configuration',
         message: 'Explorateur ouvert dans le dossier AppData/sprint',
         type: 'info',
       });
     } catch (e) {
       triggerToast({
-        title: '⚠️ Explorateur',
+        title: 'Explorateur',
         message: String(e),
         type: 'error',
       });
@@ -169,13 +169,13 @@ export default function SettingsView({
       a.click();
       URL.revokeObjectURL(url);
       triggerToast({
-        title: '📦 Export Réussi',
+        title: 'Export réussi',
         message: 'Sauvegarde de vos projets téléchargée avec succès.',
         type: 'success',
       });
     } catch (e) {
       triggerToast({
-        title: "⚠️ Échec de l'Export",
+        title: "Échec de l'export",
         message: String(e),
         type: 'error',
       });
@@ -192,7 +192,7 @@ export default function SettingsView({
         const importedData = JSON.parse(e.target.result);
         if (!Array.isArray(importedData)) {
           triggerToast({
-            title: '⚠️ Format Invalide',
+            title: 'Format invalide',
             message: 'Le fichier ne contient pas une liste valide de projets Sprint.',
             type: 'error',
           });
@@ -203,7 +203,7 @@ export default function SettingsView({
         setPendingImport({ projects: importedData, name: file.name });
       } catch {
         triggerToast({
-          title: "⚠️ Échec de l'Import",
+          title: "Échec de l'import",
           message: 'Impossible de lire le fichier JSON fourni.',
           type: 'error',
         });
@@ -247,7 +247,7 @@ export default function SettingsView({
     showAutoSaved();
     setConfirmReset(false);
     triggerToast({
-      title: '🔄 Paramètres Réinitialisés',
+      title: 'Paramètres réinitialisés',
       message: 'Toutes les préférences par défaut ont été restaurées.',
       type: 'info',
     });
@@ -288,8 +288,9 @@ export default function SettingsView({
           {categories.map(([id, label, description, Icon]) => (
             <button
               key={id}
-              onClick={() => {
+              onClick={(event) => {
                 setActiveTab(id);
+                event.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest' });
                 contentRef.current?.scrollTo({ top: 0 });
               }}
               aria-current={activeTab === id ? 'page' : undefined}

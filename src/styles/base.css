@@ -4,6 +4,22 @@
   --font-mono: 'Geist Mono', 'Cascadia Code', 'Consolas', ui-monospace, monospace;
 }
 
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-Variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
 
@@ -83,7 +99,7 @@ textarea,
   height: calc(100% + 240px);
 }
 .sprint-wordmark {
-  font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 21px;
   line-height: 1.15;
   font-weight: 700;
@@ -268,7 +284,7 @@ select:focus {
 }
 
 .animate-fadeIn {
-  animation: sprint-fade-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: sprint-fade-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes sprint-page-in {
   from {
@@ -286,15 +302,15 @@ select:focus {
 }
 .page-enter,
 .settings-section-enter,
-.projects-filter-transition {
-  animation: sprint-page-in 0.72s cubic-bezier(0.4, 0, 0.2, 1) both;
+.projects-filter-transition,
+.ports-filter-transition {
+  animation: sprint-page-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.ports-filter-transition { animation:sprint-page-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) both; }
 .animate-scaleUp {
-  animation: sprint-scale-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: sprint-scale-up 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .animate-slideUp {
-  animation: sprint-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: sprint-slide-up 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .live-dot {
   animation: sprint-pulse-dot 2s ease-in-out infinite;
@@ -304,7 +320,11 @@ select:focus {
   .animate-fadeIn,
   .animate-scaleUp,
   .animate-slideUp,
-  .live-dot {
+  .live-dot,
+  .page-enter,
+  .settings-section-enter,
+  .projects-filter-transition,
+  .ports-filter-transition {
     animation: none;
   }
 }

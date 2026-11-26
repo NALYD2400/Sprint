@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useId } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useId } from 'react';
 import { Maximize2, X } from 'lucide-react';
 import Modal from './Modal';
 
@@ -25,21 +25,45 @@ function ChartPlot({ title, history, field, unit, chartStyle, period, expanded =
     return () => observer.disconnect();
   }, []);
 
-  // Pointer movement never advances the time window independently of incoming samples.
-  const end = history.at(-1)?.timestamp ?? Date.now();
-  const start = end - period * 1000;
-  const points = history.filter((point) => point.timestamp >= start && point.timestamp <= end);
-  const value = (point) => measurement(point, field);
-  const max = Math.max(unit === '%' ? 100 : 128, ...points.map(value)) * (unit === '%' ? 1 : 1.1);
   const left = 44;
   const right = size.width - 12;
   const top = 12;
   const bottom = size.height - 28;
   const plotWidth = Math.max(1, right - left);
+  const plotHeight = Math.max(1, bottom - top);
+
+  // Pointer movement never advances the time window independently of incoming samples.
+  const { start, points, max, linePoints, areaPoints, barsPath } = useMemo(() => {
+    const windowEnd = history.at(-1)?.timestamp ?? 0;
+    const windowStart = windowEnd - period * 1000;
+    const visible = history.filter((point) => point.timestamp >= windowStart && point.timestamp <= windowEnd);
+    const val = (point) => measurement(point, field);
+    const maxVal = Math.max(unit === '%' ? 100 : 128, ...visible.map(val)) * (unit === '%' ? 1 : 1.1);
+    const toX = (point) =>
+      left + Math.max(0, Math.min(1, (point.timestamp - windowStart) / (period * 1000))) * plotWidth;
+    const toY = (n) => bottom - (n / maxVal) * plotHeight;
+    const coords = visible.map((point) => `${toX(point)},${toY(val(point))}`);
+    const joined = coords.join(' ');
+    const area = visible.length > 1
+      ? `${toX(visible[0])},${bottom} ${joined} ${toX(visible.at(-1))},${bottom}`
+      : '';
+    let bars = '';
+    if (chartStyle === 'bars' && visible.length) {
+      const barW = Math.max(1, Math.min(7, plotWidth / visible.length - 1));
+      bars = visible.map((point) => {
+        const bx = (toX(point) - 1).toFixed(1);
+        const by = toY(val(point)).toFixed(1);
+        const bh = Math.max(1, bottom - toY(val(point))).toFixed(1);
+        return `M${bx},${by}h${barW.toFixed(1)}v${bh}h-${barW.toFixed(1)}Z`;
+      }).join('');
+    }
+    return { start: windowStart, points: visible, max: maxVal, linePoints: joined, areaPoints: area, barsPath: bars };
+  }, [history, period, field, unit, chartStyle, left, bottom, plotWidth, plotHeight]);
+
+  const value = (point) => measurement(point, field);
   const x = (point) =>
     left + Math.max(0, Math.min(1, (point.timestamp - start) / (period * 1000))) * plotWidth;
-  const y = (n) => bottom - (n / max) * Math.max(1, bottom - top);
-  const coordinates = points.map((point) => `${x(point)},${y(value(point))}`);
+  const y = (n) => bottom - (n / max) * plotHeight;
   const selected = inspection
     ? points.find((point) => point.timestamp === inspection.timestamp)
     : null;
@@ -136,26 +160,16 @@ function ChartPlot({ title, history, field, unit, chartStyle, period, expanded =
         ))}
         {points.length > 1 && chartStyle === 'area' && (
           <polygon
-            points={`${x(points[0])},${bottom} ${coordinates.join(' ')} ${x(points.at(-1))},${bottom}`}
+            points={areaPoints}
             fill="var(--accent-color)"
             opacity="0.1"
           />
         )}
         {chartStyle === 'bars' ? (
-          points.map((point) => (
-            <rect
-              key={point.timestamp}
-              x={x(point) - 1}
-              y={y(value(point))}
-              width={Math.max(1, Math.min(7, plotWidth / Math.max(points.length, 1) - 1))}
-              height={Math.max(1, bottom - y(value(point)))}
-              fill="var(--accent-color)"
-              opacity="0.7"
-            />
-          ))
+          barsPath && <path d={barsPath} fill="var(--accent-color)" opacity="0.7" />
         ) : (
           <polyline
-            points={coordinates.join(' ')}
+            points={linePoints}
             fill="none"
             stroke="var(--accent-color)"
             strokeWidth="1.5"

@@ -5,7 +5,7 @@ import { Folder, X, Plus, Sparkles, Server } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import { isValidProjectPort } from '../../lib/projectChanges';
 
-export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
+export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded }) {
   const [folderPath, setFolderPath] = useState('');
   const [projectName, setProjectName] = useState('');
   const [stackInfo, setStackInfo] = useState(null);
@@ -81,7 +81,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
     let saved;
     try { saved = await onAddProject(newProject); } finally { setSaving(false); }
     if (saved === false) { setError('Le projet n’a pas été enregistré. Vérifiez l’erreur et réessayez.'); return; }
-    onClose();
+    onAdded();
   };
 
   return (
@@ -93,7 +93,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
               <Folder className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-white">Ajouter un Nouveau Projet</h2>
+              <h2 className="text-base font-semibold text-white">Ajouter un projet</h2>
               <p className="text-xs text-zinc-400">Importation locale avec détection automatique du stack</p>
             </div>
           </div>
@@ -111,20 +111,20 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Folder Selector */}
           <div>
-            <label htmlFor="prj-folder" className="block font-medium text-zinc-300 mb-1.5">Dossier du Projet</label>
+            <label htmlFor="prj-folder" className="block font-medium text-zinc-300 mb-1.5">Dossier du projet</label>
             <div className="flex gap-2">
               <input
                 id="prj-folder"
                 type="text"
                 readOnly
                 value={folderPath}
-                placeholder="Aucun dossier sélectionné..."
+                placeholder="Aucun dossier sélectionné…"
                 className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.1] text-zinc-200 font-mono focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleSelectFolder}
-                className="px-3.5 py-2 rounded-lg theme-accent-btn text-white font-medium transition-colors cursor-pointer"
+                className="px-3.5 py-2 rounded-lg theme-accent-btn font-medium transition-[filter,transform] duration-150 cursor-pointer"
               >
                 Parcourir
               </button>
@@ -136,7 +136,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="prj-name" className="block font-medium text-zinc-300 mb-1.5">Nom du Projet</label>
+                  <label htmlFor="prj-name" className="block font-medium text-zinc-300 mb-1.5">Nom du projet</label>
                   <input
                     id="prj-name"
                     type="text"
@@ -146,7 +146,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="prj-color" className="block font-medium text-zinc-300 mb-1.5">Couleur d'accent</label>
+                  <label htmlFor="prj-color" className="block font-medium text-zinc-300 mb-1.5">Couleur d’accent</label>
                   <input
                     id="prj-color"
                     type="color"
@@ -160,41 +160,41 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
               {detecting && (
                 <div className="p-3 rounded-lg bg-white/[0.03] border border-[var(--line)] flex items-center gap-2 text-zinc-400">
                   <Sparkles className="w-4 h-4 animate-pulse theme-accent-text" />
-                  <span>Détection du stack en cours...</span>
+                  <span>Détection du stack en cours…</span>
                 </div>
               )}
 
               {stackInfo && !detecting && (
-                <div className="p-3 rounded-lg theme-accent-badge flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="py-2 flex items-center justify-between border-t border-[var(--line)]">
+                  <div className="flex items-center gap-2 text-zinc-200">
                     <Sparkles className="w-4 h-4 theme-accent-text" />
-                    <span>Stack Détecté : <strong>{stackInfo.framework}</strong></span>
+                    <span>Stack détecté : <strong>{stackInfo.framework}</strong></span>
                   </div>
-                  <span className="font-mono text-[12px] px-2 py-0.5 rounded bg-black/40">
+                  <span className="font-mono text-xs text-zinc-400">
                     {stackInfo.package_manager}
                   </span>
                 </div>
               )}
 
               {/* Dev Server Command & Port */}
-              <div className="p-3.5 rounded-lg glass-card space-y-3">
+              <div className="pt-3 border-t border-[var(--line)] space-y-3">
                 <div className="flex items-center gap-2 font-medium text-zinc-200">
                   <Server className="w-4 h-4 theme-accent-text" />
-                  <span>Configuration du Serveur Dev</span>
+                  <span>Configuration du serveur</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
-                    <label htmlFor="prj-cmd" className="block text-[12px] text-zinc-400 mb-1">Commande</label>
+                    <label htmlFor="prj-cmd" className="block text-xs text-zinc-400 mb-1">Commande</label>
                     <input
                       id="prj-cmd"
                       type="text"
                       value={serverCommand}
                       onChange={(e) => setServerCommand(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-white font-mono focus:outline-none"
+                      className="w-full px-3 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] text-white font-mono focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label htmlFor="prj-port" className="block text-[12px] text-zinc-400 mb-1">Port</label>
+                    <label htmlFor="prj-port" className="block text-xs text-zinc-400 mb-1">Port</label>
                     <input
                       id="prj-port"
                       type="number"
@@ -203,7 +203,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
                       placeholder="Aucun"
                       value={serverPort}
                       onChange={(e) => setServerPort(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/[0.1] text-white font-mono focus:outline-none"
+                      className="w-full px-3 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] text-white font-mono focus:outline-none"
                     />
                   </div>
                 </div>
@@ -230,7 +230,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject }) {
             <button
               type="submit"
               disabled={saving || !folderPath || !projectName.trim()}
-              className="px-4 py-2 rounded-lg theme-accent-btn text-white font-medium transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              className="px-4 py-2 rounded-lg theme-accent-btn font-medium transition-[filter,transform] duration-150 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               {saving ? 'Enregistrement…' : 'Ajouter le projet'}

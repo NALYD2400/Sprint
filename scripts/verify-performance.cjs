@@ -8,10 +8,16 @@ const { entry } = require('./fixtures/ui.cjs');
   const { createServer } = await import('vite');
   const server = await createServer({
     logLevel: 'silent',
-    plugins: [{ name: 'count-shell-renders', transform(code, id) {
-      if (id.replaceAll('\\', '/').endsWith('/src/app/useShell.js')) {
+    plugins: [{ name: 'count-renders', enforce: 'pre', transform(code, id) {
+      const path = id.replaceAll('\\', '/');
+      if (path.endsWith('/src/app/useShell.js')) {
         return code.replace('export function useShell() {',
           'export function useShell() { window.__shellRenders = (window.__shellRenders || 0) + 1;');
+      }
+      if (path.endsWith('/src/screens/projects/ProjectsView.jsx')) {
+        const firstHook = 'const [collapsedProjects, setCollapsedProjects] = useState';
+        return code.replace(firstHook,
+          `window.__projectsRenders = (window.__projectsRenders || 0) + 1;\n  ${firstHook}`);
       }
     } }],
     server: { host: '127.0.0.1', port: 0, strictPort: true, hmr: false },
@@ -86,6 +92,18 @@ const { entry } = require('./fixtures/ui.cjs');
     await page.getByRole('heading', { name: 'Projets', exact: true }).waitFor();
     await page.waitForTimeout(200);
     const shellRenders = await page.evaluate(() => window.__shellRenders);
+    if (!baseline) {
+      const uptimeSelector = '[data-server-id="server1"] .stat-value';
+      const previousUptime = await page.locator(uptimeSelector).textContent();
+      const projectRenders = await page.evaluate(() => window.__projectsRenders);
+      assert.ok(projectRenders > 0, 'projects render counter is active');
+      await page.waitForFunction(({ uptimeSelector, previousUptime }) => {
+        const badge = document.querySelector(uptimeSelector);
+        return badge && badge.textContent !== previousUptime;
+      }, { uptimeSelector, previousUptime }, { timeout: 4000 });
+      report.projectsRendersFromUptime = await page.evaluate(() => window.__projectsRenders) - projectRenders;
+      assert.equal(report.projectsRendersFromUptime, 0, 'uptime ticks only update the badges');
+    }
     for (let i = 0; i < 20; i++) {
       await page.evaluate(i => window.__emit('system-metrics', {
         cpu_usage: i, ram_total_mb: 16000, ram_used_mb: 8000,

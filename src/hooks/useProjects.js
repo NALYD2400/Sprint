@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { readStoredSetting } from '../lib/settingsStorage';
 import { triggerToast } from '../lib/toastBus';
-import { isManualStop, unmarkManualStop } from '../lib/serverLifecycle';
+import { clearServerStart, isManualStop, recordServerStart, unmarkManualStop } from '../lib/serverLifecycle';
 import { startServer } from '../lib/serverActions';
 import { isTauriEnv, subscribeTauri } from '../lib/tauri';
 import { applyProjectChange } from '../lib/projectChanges';
@@ -36,10 +36,14 @@ export function useProjects() {
       ...project,
       servers: (project.servers || []).map(server => {
         const live = liveServers.get(server.id);
-        if (!live) return server;
-        const statusChanged = serverStatusRevisions.current.get(server.id) > previousStatusRevision;
-        if (!statusChanged && live.state !== server.state) return server;
-        return { ...server, state: live.state, pid: live.pid, lastExitReason: live.lastExitReason };
+        const resolved = !live
+          ? server
+          : (!serverStatusRevisions.current.get(server.id) || serverStatusRevisions.current.get(server.id) <= previousStatusRevision) && live.state !== server.state
+            ? server
+            : { ...server, state: live.state, pid: live.pid, lastExitReason: live.lastExitReason };
+        if (resolved.state === 'running') recordServerStart(resolved.id);
+        else if (resolved.state !== 'starting') clearServerStart(resolved.id);
+        return resolved;
       }),
     }));
     projectsRef.current = next;
@@ -109,14 +113,14 @@ export function useProjects() {
         try {
           if (!await startServer(found.project, found.server)) return;
           triggerToast({
-            title: '🔄 Auto-Restart Anti-Crash',
-            message: `${found.server.name} s'est arrêté brutalement et a été relancé automatiquement.`,
+            title: 'Relance automatique',
+            message: `${found.server.name} s'est arrêté brutalement et a été relancé.`,
             type: 'warning',
           });
         } catch (e) {
           triggerToast({
-            title: '⚠️ Auto-Restart Échoué',
-            message: `Impossible de relancer ${found.server.name}: ${String(e)}`,
+            title: 'Relance automatique échouée',
+            message: `Impossible de relancer ${found.server.name} : ${String(e)}`,
             type: 'error',
           });
         }
@@ -147,6 +151,8 @@ export function useProjects() {
       if (disposed) return;
       const { server_id, state, pid, intentional, exit_code, exit_error } = event.payload;
       serverStatusRevisions.current.set(server_id, ++statusRevision.current);
+      if (state === 'running') recordServerStart(server_id);
+      else if (state !== 'starting') clearServerStart(server_id);
       if (state === 'running' || intentional) {
         clearTimeout(restartTimers.get(server_id));
         restartTimers.delete(server_id);

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import SettingRow from '../../components/ui/SettingRow';
 import { invoke } from '@tauri-apps/api/core';
 import { APP_VERSION, GITHUB_REPO } from '../../lib/updates';
-import McpConnectModal, { McpMark } from '../../components/modals/McpConnectModal';
+import McpMark from '../../components/ui/McpMark';
+
+const McpConnectModal = lazy(() => import('../../components/modals/McpConnectModal'));
 
 export default function AboutSettings({ onOpenUpdateModal }) {
   const [mcpOpen, setMcpOpen] = useState(false);
@@ -34,7 +36,11 @@ export default function AboutSettings({ onOpenUpdateModal }) {
           MCP
         </button>
       </SettingRow>
-      <McpConnectModal isOpen={mcpOpen} onClose={() => setMcpOpen(false)} />
+      {mcpOpen && (
+        <Suspense fallback={null}>
+          <McpConnectModal isOpen={mcpOpen} onClose={() => setMcpOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

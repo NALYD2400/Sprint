@@ -8,6 +8,12 @@
         "value": "geist mono",
         "createdAt": "2026-10-25T23:18:34.100Z",
         "reason": "Agent: existing monospace design token is used for server commands, ports, durations and chart measurements in this developer tool; preserve the established interface."
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-11-25T18:50:55.589Z",
+        "reason": "Codex: Geist est la police historique de Sprint, comme le montrent les styles de HEAD. Le correctif conserve cette identité et embarque les fichiers de police pour les charger localement."
       }
     ]
   }

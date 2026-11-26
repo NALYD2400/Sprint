@@ -4,15 +4,9 @@ import { X } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { triggerToast } from '../../lib/toastBus';
 import { MCP_CLIENTS } from '../../lib/mcpSnippets';
-import mascot from '../../../assets/branding/sprint-mascot-transparent.png';
+import McpMark from '../ui/McpMark';
 
-export function McpMark({ large = false }) {
-  return (
-    <span className={large ? 'mcp-mark mcp-mark-lg' : 'mcp-mark'}>
-      <img src={mascot} alt="" draggable="false" />
-    </span>
-  );
-}
+export { McpMark };
 
 export default function McpConnectModal({ isOpen, onClose }) {
   const [clientId, setClientId] = useState('claude');

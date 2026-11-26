@@ -2,11 +2,11 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use sysinfo::{ProcessRefreshKind, System};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::config_store::load_projects;
+use crate::config_store::{get_projects_file, load_projects, ProjectConfig};
 use crate::AppState;
 
 #[derive(Debug, Clone, Serialize)]
@@ -108,6 +108,7 @@ pub fn start_metrics_poller(app: AppHandle) {
         let sys = Arc::new(Mutex::new(System::new()));
         let last_restart: Arc<Mutex<HashMap<String, Instant>>> =
             Arc::new(Mutex::new(HashMap::new()));
+        let mut cached_projects: (Option<SystemTime>, Vec<ProjectConfig>) = (None, Vec::new());
 
         loop {
             tokio::time::sleep(Duration::from_secs(2)).await;
@@ -119,14 +120,27 @@ pub fn start_metrics_poller(app: AppHandle) {
 
             let mut to_restart: Vec<GuardRestart> = Vec::new();
 
-            let metrics = collect_metrics(&mut sys.lock(), &active_pids);
+            let sys_ref = Arc::clone(&sys);
+            let pids_for_collect = active_pids.clone();
+            let Ok(metrics) = tauri::async_runtime::spawn_blocking(move || {
+                collect_metrics(&mut sys_ref.lock(), &pids_for_collect)
+            })
+            .await
+            else {
+                continue;
+            };
 
             // Auto-Guard RAM : redémarre un serveur qui dépasse sa limite
             // configurée, avec un cooldown anti crash-loop.
             if !active_pids.is_empty() {
-                let projects = load_projects();
+                let modified = std::fs::metadata(get_projects_file())
+                    .ok()
+                    .and_then(|meta| meta.modified().ok());
+                if cached_projects.0.is_none() || modified != cached_projects.0 {
+                    cached_projects = (modified, load_projects());
+                }
                 let mut restarts = last_restart.lock();
-                for prj in &projects {
+                for prj in &cached_projects.1 {
                     for srv in &prj.servers {
                         if let Some(limit) = srv.ram_limit {
                             if let Some(m) = metrics.server_metrics.get(&srv.id) {

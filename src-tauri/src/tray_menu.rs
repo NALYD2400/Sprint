@@ -33,6 +33,7 @@ struct TrayMenuState {
     quit: MenuItem<tauri::Wry>,
     activity: AtomicU8,
     rendered: Mutex<Option<MenuModel>>,
+    icons: Mutex<HashMap<String, Option<tauri::image::Image<'static>>>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -238,14 +239,14 @@ fn populate_server_menu(
     app: &AppHandle,
     submenu: &Submenu<tauri::Wry>,
     servers: &[ServerMenuEntry],
+    icon_cache: &Mutex<HashMap<String, Option<tauri::image::Image<'static>>>>,
 ) -> tauri::Result<()> {
     for item in submenu.items()? {
         submenu.remove(&item)?;
     }
-    // Decode each project once per rebuild; native menus keep only tiny RGBA images.
-    let mut icons = HashMap::new();
+    let mut cache = icon_cache.lock();
     for server in servers {
-        let icon = icons.entry(server.project_root.clone()).or_insert_with(|| {
+        let icon = cache.entry(server.project_root.clone()).or_insert_with(|| {
             if server.project_root.is_empty() {
                 return None;
             }
@@ -325,7 +326,7 @@ fn refresh(app: &AppHandle) {
         .as_ref()
         .is_none_or(|previous| previous.servers != model.servers)
     {
-        if let Err(error) = populate_server_menu(app, &menu.servers, &model.servers) {
+        if let Err(error) = populate_server_menu(app, &menu.servers, &model.servers, &menu.icons) {
             eprintln!("Sprint: impossible de mettre à jour la liste des serveurs : {error}");
             return;
         }
@@ -339,6 +340,14 @@ fn refresh(app: &AppHandle) {
     }
     *rendered = Some(model);
     let _ = app.emit("tray-state-changed", ());
+}
+
+pub fn invalidate_icons(app: &AppHandle) {
+    if let Some(menu) = app.try_state::<TrayMenuState>() {
+        let mut rendered = menu.rendered.lock();
+        menu.icons.lock().clear();
+        *rendered = None;
+    }
 }
 
 pub fn request_refresh(app: &AppHandle) {
@@ -574,6 +583,7 @@ pub fn setup(app: &tauri::App) -> tauri::Result<()> {
         quit,
         activity: AtomicU8::new(IDLE),
         rendered: Mutex::new(None),
+        icons: Mutex::new(HashMap::new()),
     });
     let mut tray = TrayIconBuilder::with_id("main_tray")
         .tooltip("Sprint")
