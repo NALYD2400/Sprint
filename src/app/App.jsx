@@ -70,6 +70,20 @@ function AppShell() {
           updateAvailable={shell.updateAvailable}
           collapsed={shell.prefs.sidebarCollapsed}
           onToggleCollapsed={() => shell.updatePrefs({ sidebarCollapsed: !shell.prefs.sidebarCollapsed })}
+          projects={shell.projects}
+          projectIcons={shell.projectIcons}
+          openLogIds={shell.openLogIds}
+          openLogServers={shell.openLogServers}
+          activeLogId={shell.activeLogId}
+          splitLogId={shell.splitLogId}
+          isLogSplitMode={shell.isLogSplitMode}
+          onOpenLogTab={shell.openLogTab}
+          onCloseLogTab={shell.closeLogTab}
+          openPreviewIds={shell.openPreviewIds}
+          openPreviewServers={shell.openPreviewServers}
+          activePreviewId={shell.activePreviewId}
+          onOpenPreviewTab={shell.openPreviewTab}
+          onClosePreviewTab={shell.closePreviewTab}
         />
         <WorkspaceMain shell={shell} />
       </div>

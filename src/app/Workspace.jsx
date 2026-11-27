@@ -25,7 +25,23 @@ export default function WorkspaceMain({ shell }) {
     handleOpenBrowser,
     browserTarget,
     consumeBrowserTarget,
-    selectedTerminalId,
+    previewServers,
+    openPreviewIds,
+    openPreviewServers,
+    activePreviewId,
+    openPreviewTab,
+    allServers,
+    openLogIds,
+    openLogServers,
+    activeLogId,
+    splitLogId,
+    isLogSplitMode,
+    focusedLogPane,
+    setFocusedLogPane,
+    openLogTab,
+    closeLogTab,
+    setSplitLogServer,
+    toggleLogSplitMode,
     setEnvModalRoot,
     setEditProjectTarget,
     setServerForm,
@@ -83,9 +99,14 @@ export default function WorkspaceMain({ shell }) {
               <BrowserView
                 projects={projects}
                 projectIcons={projectIcons}
-                initialServerId={browserTarget.serverId}
-                initialUrl={browserTarget.url}
+                servers={previewServers}
+                openPreviewIds={openPreviewIds}
+                openPreviewServers={openPreviewServers}
+                activeServerId={activePreviewId}
+                browserTarget={browserTarget}
+                onOpenPreviewTab={(id) => openPreviewTab(id, { navigate: false })}
                 onTargetConsumed={consumeBrowserTarget}
+                sidebarCollapsed={prefs.sidebarCollapsed}
                 onSelectTab={(tab, serverId) => {
                   if (tab === 'terminal' && serverId) handleOpenTerminal(serverId);
                   else setActiveTab(tab);
@@ -99,7 +120,19 @@ export default function WorkspaceMain({ shell }) {
               <TerminalView
                 projects={projects}
                 projectIcons={projectIcons}
-                initialServerId={selectedTerminalId}
+                allServers={allServers}
+                openLogIds={openLogIds}
+                openLogServers={openLogServers}
+                activeLogId={activeLogId}
+                splitLogId={splitLogId}
+                isSplitMode={isLogSplitMode}
+                focusedPane={focusedLogPane}
+                onFocusPane={setFocusedLogPane}
+                onOpenLogTab={(id) => openLogTab(id, { navigate: false })}
+                onCloseLogTab={closeLogTab}
+                onSetSplitServer={setSplitLogServer}
+                onToggleSplitMode={toggleLogSplitMode}
+                sidebarCollapsed={prefs.sidebarCollapsed}
                 onSelectTab={setActiveTab}
               />
             )}

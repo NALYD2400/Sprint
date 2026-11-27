@@ -10,7 +10,7 @@
     "test:embedded": "cargo test --release --manifest-path src-tauri/Cargo.toml --lib production_frontend_is_embedded",
     "lint": "oxlint",
     "preview": "vite preview",
-    "tauri": "tauri",
+    "tauri": "node scripts/tauri-cli.mjs",
     "test:ui": "node scripts/verify-ui.cjs",
     "test:dashboard": "node scripts/verify-dashboard.cjs",
     "test:flows": "node scripts/verify-server-flows.cjs",

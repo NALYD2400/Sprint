@@ -218,6 +218,9 @@ pub fn run() {
         }))
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
+                if cfg!(debug_assertions) {
+                    let _ = window.set_title("Sprint (Dev)");
+                }
                 let _ = window.show();
                 let _ = window.set_focus();
             }

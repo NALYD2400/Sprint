@@ -1,7 +1,10 @@
-import React from 'react';
-import { Settings } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Plus, Settings, X } from 'lucide-react';
 
 import { NAV_ITEMS } from '../../lib/navigation';
+import { serverStatusLabel, serverStatusTone } from '../../lib/logTabs';
+import ServerPickerMenu from '../ui/ServerPickerMenu';
+import ProjectAvatar from '../ui/ProjectAvatar';
 import SprintNavIcon from './SprintNavIcon';
 
 const brandedItems = new Set(['dashboard', 'projects', 'browser', 'ports', 'terminal', 'settings']);
@@ -46,6 +49,166 @@ function NavButton({ item, isActive, onClick, collapsed, badge, shortcut }) {
   );
 }
 
+function SidebarTreeSection({
+  item,
+  prefix,
+  isPageActive,
+  onSelectPage,
+  collapsed,
+  servers = [],
+  activeId = null,
+  splitId = null,
+  isSplitMode = false,
+  onSelectServer,
+  onCloseServer,
+  pickerOpen,
+  addButtonRef,
+  onTogglePicker,
+  addLabel,
+  addTitle,
+  treeLabel,
+  closeLabelPrefix,
+  itemLabelPrefix,
+  showPortSubtitle = false,
+}) {
+  const hasChildren = servers.length > 0;
+
+  return (
+    <div
+      className={`sidebar-tree-group sidebar-${prefix}-group${collapsed ? ' is-collapsed' : ''}${
+        hasChildren ? ' has-children' : ''
+      }`}
+    >
+      <div
+        className={`sidebar-tree-parent sidebar-${prefix}-parent${
+          isPageActive ? ' is-active-page' : ''
+        }${hasChildren ? ' has-children' : ''}`}
+      >
+        <NavButton
+          item={item}
+          isActive={isPageActive}
+          onClick={onSelectPage}
+          collapsed={collapsed}
+          shortcut={item.key}
+        />
+        {!collapsed && (
+          <button
+            ref={addButtonRef}
+            type="button"
+            className={`sidebar-tree-add sidebar-${prefix}-add`}
+            aria-label={addLabel}
+            aria-expanded={pickerOpen}
+            title={addTitle}
+            onClick={onTogglePicker}
+          >
+            <Plus size={14} strokeWidth={2.3} />
+          </button>
+        )}
+      </div>
+
+      {hasChildren && !collapsed && (
+        <div className={`sidebar-tree-list sidebar-${prefix}-tree`} role="list" aria-label={treeLabel}>
+          {servers.map((srv) => {
+            const isPrimary = srv.id === activeId;
+            const isSecondary = isSplitMode && srv.id === splitId;
+            const isSelected = isPageActive && isPrimary;
+            const isSplitSelected = isPageActive && isSecondary;
+            const tone = serverStatusTone(srv);
+            const statusText = serverStatusLabel(srv);
+            const subtitle =
+              showPortSubtitle && srv.port > 0
+                ? `${srv.projectName} · :${srv.port}`
+                : srv.projectName;
+
+            return (
+              <div
+                key={srv.id}
+                role="listitem"
+                data-server-id={srv.id}
+                className={`sidebar-tree-item sidebar-${prefix}-item${isSelected ? ' is-active' : ''}${
+                  isSplitSelected ? ' is-split' : ''
+                }`}
+              >
+                <button
+                  type="button"
+                  className={`sidebar-tree-select sidebar-${prefix}-select`}
+                  aria-current={isSelected ? 'true' : undefined}
+                  title={`${srv.projectName} · ${srv.name}${srv.port > 0 ? ` :${srv.port}` : ''} · ${statusText}`}
+                  onClick={() => onSelectServer?.(srv.id)}
+                >
+                  <span className="sidebar-tree-avatar">
+                    <ProjectAvatar project={srv.project} image={srv.icon} small />
+                    <span className={`server-avatar-status is-${tone}`} />
+                  </span>
+                  <span className="sidebar-tree-copy">
+                    <span className="sidebar-tree-name">{srv.name}</span>
+                    <span className="sidebar-tree-project">{subtitle}</span>
+                  </span>
+                  {isSplitMode && (isPrimary || isSecondary) && (
+                    <span
+                      className="sidebar-tree-pane-badge"
+                      title={isPrimary ? 'Console 1' : 'Console 2'}
+                    >
+                      {isPrimary ? '1' : '2'}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`sidebar-tree-close sidebar-${prefix}-close`}
+                  aria-label={`${closeLabelPrefix} ${srv.projectName} · ${srv.name}`}
+                  title="Fermer cet onglet"
+                  onClick={() => onCloseServer?.(srv.id)}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {hasChildren && collapsed && (
+        <div
+          className={`sidebar-tree-list sidebar-${prefix}-tree is-collapsed`}
+          role="list"
+          aria-label={treeLabel}
+        >
+          {servers.map((srv) => {
+            const isPrimary = srv.id === activeId;
+            const isSecondary = isSplitMode && srv.id === splitId;
+            const isSelected = isPageActive && isPrimary;
+            const isSplitSelected = isPageActive && isSecondary;
+            const tone = serverStatusTone(srv);
+            const statusText = serverStatusLabel(srv);
+
+            return (
+              <button
+                key={srv.id}
+                type="button"
+                role="listitem"
+                data-server-id={srv.id}
+                className={`sidebar-tree-mini sidebar-${prefix}-mini${isSelected ? ' is-active' : ''}${
+                  isSplitSelected ? ' is-split' : ''
+                }`}
+                aria-label={`${itemLabelPrefix} · ${srv.projectName} · ${srv.name}`}
+                aria-current={isSelected ? 'true' : undefined}
+                title={`${srv.projectName} · ${srv.name}${srv.port > 0 ? ` :${srv.port}` : ''} · ${statusText}`}
+                onClick={() => onSelectServer?.(srv.id)}
+              >
+                <span className="sidebar-tree-avatar">
+                  <ProjectAvatar project={srv.project} image={srv.icon} small />
+                  <span className={`server-avatar-status is-${tone}`} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Sidebar({
   activeTab,
   setActiveTab,
@@ -53,7 +216,44 @@ export default function Sidebar({
   updateAvailable,
   collapsed,
   onToggleCollapsed,
+  projects = [],
+  projectIcons = {},
+  openLogIds = [],
+  openLogServers = [],
+  activeLogId = null,
+  splitLogId = null,
+  isLogSplitMode = false,
+  onOpenLogTab,
+  onCloseLogTab,
+  openPreviewIds = [],
+  openPreviewServers = [],
+  activePreviewId = null,
+  onOpenPreviewTab,
+  onClosePreviewTab,
 }) {
+  const [pickerMode, setPickerMode] = useState(null);
+  const [pickerPoint, setPickerPoint] = useState(null);
+  const addLogButtonRef = useRef(null);
+  const addPreviewButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (collapsed && pickerMode) setPickerMode(null);
+  }, [collapsed, pickerMode]);
+
+  const togglePicker = (mode, ref) => {
+    setPickerMode((current) => {
+      const next = current === mode ? null : mode;
+      if (next && ref.current) {
+        const rect = ref.current.getBoundingClientRect();
+        setPickerPoint({ x: rect.right + 10, y: rect.top });
+      }
+      return next;
+    });
+  };
+
+  const withIcons = (servers) =>
+    servers.map((srv) => ({ ...srv, icon: projectIcons[srv.projectId] }));
+
   return (
     <aside
       data-tauri-drag-region="deep"
@@ -62,18 +262,93 @@ export default function Sidebar({
     >
       <div className="sidebar-primary shrink-0">
         <nav className="sidebar-navigation" aria-label="Pages">
-          {NAV_ITEMS.map((item) => (
-            <NavButton
-              key={item.id}
-              item={item}
-              isActive={activeTab === item.id}
-              onClick={() => setActiveTab(item.id)}
-              collapsed={collapsed}
-              shortcut={item.key}
-            />
-          ))}
+          {NAV_ITEMS.map((item) => {
+            if (item.id === 'browser') {
+              return (
+                <SidebarTreeSection
+                  key={item.id}
+                  item={item}
+                  prefix="preview"
+                  isPageActive={activeTab === 'browser'}
+                  onSelectPage={() => setActiveTab('browser')}
+                  collapsed={collapsed}
+                  servers={withIcons(openPreviewServers)}
+                  activeId={activePreviewId}
+                  onSelectServer={(id) => onOpenPreviewTab?.(id, { navigate: true })}
+                  onCloseServer={onClosePreviewTab}
+                  pickerOpen={pickerMode === 'preview'}
+                  addButtonRef={addPreviewButtonRef}
+                  onTogglePicker={() => togglePicker('preview', addPreviewButtonRef)}
+                  addLabel="Choisir un projet"
+                  addTitle="Ouvrir un aperçu"
+                  treeLabel="Aperçus ouverts"
+                  closeLabelPrefix="Fermer l’aperçu"
+                  itemLabelPrefix="Aperçu web"
+                  showPortSubtitle
+                />
+              );
+            }
+
+            if (item.id === 'terminal') {
+              return (
+                <SidebarTreeSection
+                  key={item.id}
+                  item={item}
+                  prefix="log"
+                  isPageActive={activeTab === 'terminal'}
+                  onSelectPage={() => setActiveTab('terminal')}
+                  collapsed={collapsed}
+                  servers={withIcons(openLogServers)}
+                  activeId={activeLogId}
+                  splitId={splitLogId}
+                  isSplitMode={isLogSplitMode}
+                  onSelectServer={(id) => onOpenLogTab?.(id, { navigate: true })}
+                  onCloseServer={onCloseLogTab}
+                  pickerOpen={pickerMode === 'logs'}
+                  addButtonRef={addLogButtonRef}
+                  onTogglePicker={() => togglePicker('logs', addLogButtonRef)}
+                  addLabel="Ouvrir des logs"
+                  addTitle="Ouvrir une console"
+                  treeLabel="Consoles ouvertes"
+                  closeLabelPrefix="Fermer les logs"
+                  itemLabelPrefix="Logs"
+                />
+              );
+            }
+
+            return (
+              <NavButton
+                key={item.id}
+                item={item}
+                isActive={activeTab === item.id}
+                onClick={() => setActiveTab(item.id)}
+                collapsed={collapsed}
+                shortcut={item.key}
+              />
+            );
+          })}
         </nav>
       </div>
+
+      <ServerPickerMenu
+        mode={pickerMode || 'logs'}
+        open={Boolean(pickerMode) && !collapsed}
+        anchorRef={pickerMode === 'preview' ? addPreviewButtonRef : addLogButtonRef}
+        point={pickerPoint}
+        onClose={() => setPickerMode(null)}
+        projects={projects}
+        projectIcons={projectIcons}
+        openIds={pickerMode === 'preview' ? openPreviewIds : openLogIds}
+        activeId={pickerMode === 'preview' ? activePreviewId : activeLogId}
+        splitId={pickerMode === 'logs' ? splitLogId : null}
+        isSplitMode={pickerMode === 'logs' ? isLogSplitMode : false}
+        onSelectServer={(serverId) =>
+          pickerMode === 'preview'
+            ? onOpenPreviewTab?.(serverId, { navigate: true })
+            : onOpenLogTab?.(serverId, { navigate: true })
+        }
+        onGoToProjects={() => setActiveTab('projects')}
+      />
 
       <div className="sidebar-secondary shrink-0">
         {updateAvailable && (

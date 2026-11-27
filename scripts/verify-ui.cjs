@@ -91,9 +91,11 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     // when that page is already open with another server selected.
     for (const serverId of ['server1', 'server2']) {
       await emit('tray-navigate', { tab: 'terminal', serverId });
-      await page.waitForFunction(id => document.querySelector('select[aria-label="Console 1"]')?.value === id, serverId);
-      check(await page.getByRole('combobox', { name: 'Console 1', exact: true }).inputValue() === serverId,
-        'tray opens the requested console ' + serverId);
+      await page.locator(`.logs-active-server[data-server-id="${serverId}"]`).waitFor();
+      check(
+        (await page.locator('.logs-active-server').getAttribute('data-server-id')) === serverId,
+        'tray opens the requested console ' + serverId,
+      );
     }
     for (const [serverId, port] of [['server2', 3001], ['server1', 3000]]) {
       const url = `http://localhost:${port}/`;
@@ -310,10 +312,39 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await page.keyboard.press('Control+5');
     check(
-      (await page.getByRole('combobox', { name: 'Console 1', exact: true }).count()) === 1,
-      'single server selector',
+      (await page.locator('.sidebar-log-mini').count()) === 2,
+      'collapsed sidebar lists running log mini-avatars under Logs',
+    );
+    check(
+      await page.locator('.logs-header-add').isVisible(),
+      'collapsed sidebar exposes header open button on Logs',
+    );
+    await page.getByRole('button', { name: 'Agrandir le menu', exact: true }).click();
+    check(
+      (await page.locator('.sidebar-log-item').count()) === 2,
+      'sidebar lists running log consoles under Logs',
     );
     check((await page.locator('.logs-servers').count()) === 0, 'redundant tab strip removed');
+    check(
+      (await page.locator('.logs-active-server').getAttribute('data-server-id')) === 'server2',
+      'persisted active log selection survives reload and navigation',
+    );
+    await page.locator('.sidebar-log-add').click();
+    const picker = page.locator('.logs-picker-menu');
+    await picker.waitFor({ state: 'visible' });
+    await picker.getByRole('button', { name: /Serveur arrêté/ }).click();
+    await page.locator('.logs-active-server[data-server-id="server3"]').waitFor();
+    check(
+      (await page.locator('.sidebar-log-item').count()) === 3,
+      'plus menu opens a stopped console in sidebar under Logs',
+    );
+    await page.locator('.sidebar-log-item[data-server-id="server3"] .sidebar-log-close').click();
+    check(
+      (await page.locator('.sidebar-log-item').count()) === 2,
+      'close button removes log tab from sidebar',
+    );
+    await page.locator('.sidebar-log-item[data-server-id="server1"] .sidebar-log-select').click();
+    await page.locator('.logs-active-server[data-server-id="server1"]').waitFor();
     await emit('server-status-changed', {
       server_id: 'server1',
       state: 'stopped',
@@ -322,11 +353,9 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     });
     await page.waitForTimeout(100);
     check(
-      (await page.getByRole('combobox', { name: 'Console 1', exact: true }).inputValue()) ===
-        'server1',
+      (await page.locator('.logs-active-server').getAttribute('data-server-id')) === 'server1',
       'stopped console remains selected',
     );
-    await page.getByLabel('Inclure les arrêtés').check();
     await page.getByRole('button', { name: 'Deux consoles', exact: true }).click();
     check(
       (await page.getByRole('combobox', { name: 'Console 2', exact: true }).inputValue()) !==
@@ -399,9 +428,6 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     const primaryPanel = page.locator('.terminal-panel').first();
     check(await primaryPanel.locator('.terminal-footer').innerText().then((text) => text.includes('Serveur arrêté')),
       'stopped console never claims to be live');
-    check(await page.locator('.logs-selection-note').count() === 0, 'show-all selection needs no exception explanation');
-    await page.getByLabel('Inclure les arrêtés').uncheck();
-    check(await page.locator('.logs-selection-note').isVisible(), 'retained stopped selection is explained');
     await page.evaluate(() => (window.__failStart = true));
     await primaryPanel.getByRole('button', { name: 'Lancer le serveur · Console 1', exact: true }).click();
     await page.waitForTimeout(100);
@@ -572,7 +598,8 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await setTheme('light');
     await page.screenshot({ path: art + '/sprint-preview-light.png' });
     await page.getByRole('button', { name: 'Console complète', exact: true }).click();
-    check(await page.getByRole('combobox', { name: 'Console 1', exact: true }).inputValue() === 'server1',
+    await page.locator('.logs-active-server[data-server-id="server1"]').waitFor();
+    check((await page.locator('.logs-active-server').getAttribute('data-server-id')) === 'server1',
       'preview opens the complete console for the same server');
     await page.evaluate(() => (window.__portOnline = false));
     await page.keyboard.press('Control+3');
@@ -589,13 +616,13 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await page.waitForTimeout(100);
     check((await cmds()).filter((command) => command.cmd === 'start_server_cmd').length === startsBefore + 1,
       'preview double click launches only once');
-    check(await page.locator('.preview-tab.is-active .preview-tab-stop').isDisabled(),
+    check(await page.locator('.preview-server-action').isDisabled(),
       'preview selection is stable while server starts');
     await page.evaluate(() => { window.__portOnline = true; document.dispatchEvent(new Event('visibilitychange')); });
     await page.locator('.preview-stage iframe').waitFor();
     check(await page.getByRole('button', { name: 'Tester sur téléphone' }).isEnabled(),
       'preview recovers automatically after a successful launch');
-    const stopPreview = page.locator('.preview-tab.is-active .preview-tab-stop');
+    const stopPreview = page.locator('.preview-server-action');
     await page.evaluate(() => (window.__failStop = true));
     await stopPreview.click();
     await page.waitForTimeout(100);
@@ -605,8 +632,23 @@ const { verifyMcpConnect } = require('./verify-mcp-connect.cjs');
     await stopPreview.click();
     await page.getByRole('button', { name: 'Lancer le serveur', exact: true }).waitFor();
     await address.fill('localhost:3001/external'); await address.press('Enter');
-    check(await page.locator('.preview-tab-select[aria-current="page"]').innerText() === projects[0].servers[0].name,
+    check((await page.locator('.preview-active-server').getAttribute('data-server-id')) === 'server1',
       'navigating to an external address preserves the selected server');
+    check((await page.locator('.sidebar-preview-item').count()) === 2,
+      'sidebar lists running preview tabs under Aperçu web');
+    await page.locator('.sidebar-preview-add').click();
+    const previewPicker = page.locator('.logs-picker-menu');
+    await previewPicker.waitFor({ state: 'visible' });
+    await previewPicker.getByRole('button', { name: /Serveur arrêté/ }).click();
+    await page.locator('.preview-active-server[data-server-id="server3"]').waitFor();
+    check((await page.locator('.sidebar-preview-item').count()) === 3,
+      'plus menu opens a stopped preview in sidebar under Aperçu web');
+    await page.locator('.sidebar-preview-item[data-server-id="server3"] .sidebar-preview-close').click();
+    await page.locator('.preview-active-server[data-server-id="server2"]').waitFor();
+    check((await page.locator('.sidebar-preview-item').count()) === 2,
+      'close button removes preview tab from sidebar');
+    await page.locator('.sidebar-preview-item[data-server-id="server1"] .sidebar-preview-select').click();
+    await page.locator('.preview-active-server[data-server-id="server1"]').waitFor();
     check(await page.getByRole('button', { name: 'Tester sur téléphone' }).isDisabled(), 'external preview does not share the wrong local server');
     check(await page.locator('.preview-stage iframe').count() === 1, 'external page can load when selected server is offline');
     await page.getByRole('button', { name: 'Ouvrir dans le navigateur', exact: true }).last().click();

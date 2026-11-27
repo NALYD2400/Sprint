@@ -319,21 +319,6 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-@container (max-width: 520px) {
-  .terminal-actions {
-    width: 100%;
-  }
-  .terminal-actions {
-    justify-content: flex-end;
-  }
-  .terminal-actions > .relative {
-    flex: 1;
-    min-width: 100px;
-  }
-  .terminal-toolbar .log-filter {
-    width: 100%;
-  }
-}
 
 .chart-header {
   display: flex;
