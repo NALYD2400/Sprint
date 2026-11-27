@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
-import { Folder, X, Plus, Sparkles, Server } from 'lucide-react';
+import { X, Plus, Sparkles, Server } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import SprintNavIcon from '../../components/layout/SprintNavIcon';
 import { isValidProjectPort } from '../../lib/projectChanges';
+import { isTauriEnv } from '../../lib/tauri';
 
 export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded }) {
   const [folderPath, setFolderPath] = useState('');
@@ -17,6 +19,10 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
   const [saving, setSaving] = useState(false);
 
   const handleSelectFolder = async () => {
+    if (!isTauriEnv()) {
+      setError('La sélection de dossier nécessite l’application de bureau Sprint.');
+      return;
+    }
     try {
       const selected = await open({
         directory: true,
@@ -45,6 +51,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
       }
     } catch (e) {
       console.error('Error selecting directory:', e);
+      setError('Impossible d’ouvrir le sélecteur de dossier.');
     }
   };
 
@@ -88,13 +95,13 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
     <Modal isOpen={isOpen} onClose={onClose} dismissible={!saving} maxWidth="max-w-lg">
       <div className="p-6 space-y-5">
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg theme-accent-badge flex items-center justify-center">
-              <Folder className="w-4 h-4" />
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="page-header-icon" aria-hidden="true">
+              <SprintNavIcon name="projects" active />
+            </span>
             <div>
-              <h2 className="text-base font-semibold text-white">Ajouter un projet</h2>
-              <p className="text-xs text-zinc-400">Importation locale avec détection automatique du stack</p>
+              <h2 className="text-base font-semibold text-[var(--text-hi)]">Ajouter un projet</h2>
+              <p className="text-xs text-[var(--text-mid)]">Importation locale avec détection automatique du stack</p>
             </div>
           </div>
           <button
@@ -102,7 +109,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
             onClick={onClose}
             disabled={saving}
             aria-label="Fermer"
-            className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -111,7 +118,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Folder Selector */}
           <div>
-            <label htmlFor="prj-folder" className="block font-medium text-zinc-300 mb-1.5">Dossier du projet</label>
+            <label htmlFor="prj-folder" className="block font-medium text-[var(--text-mid)] mb-1.5">Dossier du projet</label>
             <div className="flex gap-2">
               <input
                 id="prj-folder"
@@ -119,7 +126,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
                 readOnly
                 value={folderPath}
                 placeholder="Aucun dossier sélectionné…"
-                className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.1] text-zinc-200 font-mono focus:outline-none"
+                className="flex-1 px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-[var(--text-hi)] placeholder-[var(--text-lo)] font-mono focus:outline-none"
               />
               <button
                 type="button"
@@ -136,29 +143,29 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="prj-name" className="block font-medium text-zinc-300 mb-1.5">Nom du projet</label>
+                  <label htmlFor="prj-name" className="block font-medium text-[var(--text-mid)] mb-1.5">Nom du projet</label>
                   <input
                     id="prj-name"
                     type="text"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.1] text-white focus:outline-none theme-accent-border"
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-[var(--text-hi)] focus:outline-none theme-accent-border"
                   />
                 </div>
                 <div>
-                  <label htmlFor="prj-color" className="block font-medium text-zinc-300 mb-1.5">Couleur d’accent</label>
+                  <label htmlFor="prj-color" className="block font-medium text-[var(--text-mid)] mb-1.5">Couleur d’accent</label>
                   <input
                     id="prj-color"
                     type="color"
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
-                    className="w-full h-9 p-1 rounded-lg bg-white/[0.04] border border-white/[0.1] cursor-pointer"
+                    className="w-full h-9 p-1 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] cursor-pointer"
                   />
                 </div>
               </div>
 
               {detecting && (
-                <div className="p-3 rounded-lg bg-white/[0.03] border border-[var(--line)] flex items-center gap-2 text-zinc-400">
+                <div className="p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] flex items-center gap-2 text-[var(--text-mid)]">
                   <Sparkles className="w-4 h-4 animate-pulse theme-accent-text" />
                   <span>Détection du stack en cours…</span>
                 </div>
@@ -166,11 +173,11 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
 
               {stackInfo && !detecting && (
                 <div className="py-2 flex items-center justify-between border-t border-[var(--line)]">
-                  <div className="flex items-center gap-2 text-zinc-200">
+                  <div className="flex items-center gap-2 text-[var(--text-hi)]">
                     <Sparkles className="w-4 h-4 theme-accent-text" />
                     <span>Stack détecté : <strong>{stackInfo.framework}</strong></span>
                   </div>
-                  <span className="font-mono text-xs text-zinc-400">
+                  <span className="font-mono text-xs text-[var(--text-mid)]">
                     {stackInfo.package_manager}
                   </span>
                 </div>
@@ -178,23 +185,23 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
 
               {/* Dev Server Command & Port */}
               <div className="pt-3 border-t border-[var(--line)] space-y-3">
-                <div className="flex items-center gap-2 font-medium text-zinc-200">
+                <div className="flex items-center gap-2 font-medium text-[var(--text-hi)]">
                   <Server className="w-4 h-4 theme-accent-text" />
                   <span>Configuration du serveur</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
-                    <label htmlFor="prj-cmd" className="block text-xs text-zinc-400 mb-1">Commande</label>
+                    <label htmlFor="prj-cmd" className="block text-xs text-[var(--text-mid)] mb-1">Commande</label>
                     <input
                       id="prj-cmd"
                       type="text"
                       value={serverCommand}
                       onChange={(e) => setServerCommand(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] text-white font-mono focus:outline-none"
+                      className="w-full px-3 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-[var(--text-hi)] font-mono focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label htmlFor="prj-port" className="block text-xs text-zinc-400 mb-1">Port</label>
+                    <label htmlFor="prj-port" className="block text-xs text-[var(--text-mid)] mb-1">Port</label>
                     <input
                       id="prj-port"
                       type="number"
@@ -203,7 +210,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
                       placeholder="Aucun"
                       value={serverPort}
                       onChange={(e) => setServerPort(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] text-white font-mono focus:outline-none"
+                      className="w-full px-3 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-[var(--text-hi)] font-mono focus:outline-none"
                     />
                   </div>
                 </div>
@@ -212,7 +219,7 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
           )}
 
           {error && (
-            <div role="alert" className="text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3.5 py-2.5">
+            <div role="alert" className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3.5 py-2.5">
               {error}
             </div>
           )}
@@ -222,15 +229,15 @@ export default function AddProjectModal({ isOpen, onClose, onAddProject, onAdded
             <button
               type="button"
               onClick={onClose}
-            disabled={saving}
-              className="px-4 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 transition-colors cursor-pointer"
+              disabled={saving}
+              className="btn cursor-pointer"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={saving || !folderPath || !projectName.trim()}
-              className="px-4 py-2 rounded-lg theme-accent-btn font-medium transition-[filter,transform] duration-150 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              className="px-4 py-2 rounded-lg theme-accent-btn font-medium transition-[filter,transform] duration-150 cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               {saving ? 'Enregistrement…' : 'Ajouter le projet'}

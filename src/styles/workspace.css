@@ -81,6 +81,22 @@
   font-size: 12px;
   min-width: 0;
 }
+select.control-input {
+  appearance: none;
+  padding-right: 30px;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 13px 13px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239aa8a6' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+}
+:root[data-theme='light'] select.control-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23525e5c' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+}
+select.control-input:hover {
+  border-color: var(--text-lo);
+  background-color: var(--surface-3);
+}
 .control-input::placeholder {
   color: var(--text-lo);
 }
@@ -538,14 +554,13 @@
   border-radius: 7px;
   border: 0;
   cursor: pointer;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 .sidebar-tree-mini:hover {
   background: rgba(var(--accent-color-rgb), 0.1);
 }
 .sidebar-tree-mini.is-active {
   background: rgba(var(--accent-color-rgb), 0.16);
-  box-shadow: inset 2px 0 0 var(--accent-color);
 }
 .sidebar-tree-mini.is-split {
   background: var(--surface-2);

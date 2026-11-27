@@ -129,9 +129,15 @@ export default function HomeView({
           </div>
         )}
         {servers.length === 0 ? (
-          <p className="text-sm text-zinc-400 py-6">
-            Ajoutez un projet pour configurer votre premier serveur.
-          </p>
+          <div className="py-6 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm text-[var(--text-mid)]">
+              Ajoutez un projet pour configurer votre premier serveur.
+            </p>
+            <button type="button" className="btn" onClick={onAddProject}>
+              <Plus size={14} />
+              Ajouter un projet
+            </button>
+          </div>
         ) : visibleServers.length === 0 ? (
           <div className="dashboard-filter-empty" role="status">
             <p>{search ? 'Aucun serveur ne correspond à cette recherche.' : serverFilter === 'errors' ? 'Aucun serveur en erreur.' : 'Aucun serveur actif.'}</p>
@@ -212,8 +218,8 @@ export default function HomeView({
               <SlidersHorizontal size={14} />
               Personnaliser
             </button>
-            <button type="button" className="quiet-button" onClick={onAddProject}>
-              <Plus size={15} />
+            <button type="button" className="btn" onClick={onAddProject}>
+              <Plus size={14} />
               Nouveau
             </button>
           </>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit3, Save, Check } from 'lucide-react';
+import { X, Save, Check } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import SprintNavIcon from '../../components/layout/SprintNavIcon';
 
 const COLOR_PRESETS = [
   '#a855f7', // Violet
@@ -50,19 +51,15 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center border"
-              style={{
-                backgroundColor: `${color}20`,
-                borderColor: `${color}50`,
-                color: color,
-              }}
-            >
-              <Edit3 className="w-5 h-5" />
-            </div>
+            <span className="page-header-icon" aria-hidden="true">
+              <SprintNavIcon name="projects" active />
+            </span>
             <div>
-              <h2 className="text-base font-semibold text-white tracking-tight">Modifier le projet</h2>
-              <p className="text-xs text-zinc-400">Nom et couleur de repère du projet</p>
+              <h2 className="text-base font-semibold text-[var(--text-hi)] tracking-tight">Modifier le projet</h2>
+              <p className="text-xs text-[var(--text-mid)] flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
+                <span>Nom et couleur de repère du projet</span>
+              </p>
             </div>
           </div>
           <button
@@ -70,7 +67,7 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
             onClick={onClose}
             disabled={saving}
             aria-label="Fermer"
-            className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -81,7 +78,7 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
           {saveError && <p role="alert" className="text-xs text-rose-400">{saveError}</p>}
           {/* Project Name */}
           <div>
-            <label htmlFor="edit-prj-name" className="block text-xs font-medium text-zinc-400 mb-1.5 font-mono">
+            <label htmlFor="edit-prj-name" className="block text-xs font-medium text-[var(--text-mid)] mb-1.5">
               Nom du projet
             </label>
             <input
@@ -91,13 +88,13 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-white/[0.04] border border-[var(--line)] text-xs text-white font-mono focus:outline-none theme-accent-border"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-xs text-[var(--text-hi)] focus:outline-none theme-accent-border"
             />
           </div>
 
           {/* Project Color Palette */}
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-2 font-mono flex items-center gap-1.5">
+            <label className="block text-xs font-medium text-[var(--text-mid)] mb-2 flex items-center gap-1.5">
               <span>Couleur du projet</span>
             </label>
             <div className="grid grid-cols-4 gap-2.5">
@@ -111,7 +108,7 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
                     aria-pressed={isSelected}
                     onClick={() => setColor(presetHex)}
                     className={`h-9 rounded-lg border flex items-center justify-center transition-[transform,box-shadow] duration-150 ease-out cursor-pointer ${
-                      isSelected ? 'ring-2 ring-[#fff] scale-105' : 'hover:scale-95 border-[var(--line)]'
+                      isSelected ? 'ring-2 ring-[var(--text-hi)] ring-offset-2 ring-offset-[var(--bg-elevated)] scale-105' : 'hover:scale-95 border-[var(--line)]'
                     }`}
                     style={{ backgroundColor: presetHex }}
                   >
@@ -127,8 +124,8 @@ export default function EditProjectModal({ isOpen, onClose, project, saveProject
             <button
               type="button"
               onClick={onClose}
-            disabled={saving}
-              className="px-4 py-2.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 hover:text-white text-xs font-semibold border border-[var(--line)] transition-colors duration-150 cursor-pointer"
+              disabled={saving}
+              className="btn cursor-pointer"
             >
               Annuler
             </button>

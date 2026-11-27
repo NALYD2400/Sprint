@@ -3,8 +3,8 @@ import { Keyboard, BookOpen } from 'lucide-react';
 
 const SHORTCUTS = [
   { keys: ['Ctrl', 'K'], label: 'Rechercher un projet, une page ou une action' },
-  { keys: ['Ctrl', '1…5'], label: 'Aller à Accueil, Projets, Aperçu, Connexions, Journal' },
-  { keys: ['Ctrl', ','], label: 'Ouvrir les réglages' },
+  { keys: ['Ctrl', '1…5'], label: 'Aller à Tableau de bord, Projets, Aperçu web, Ports, Logs' },
+  { keys: ['Ctrl', ','], label: 'Ouvrir les paramètres' },
   { keys: ['Ctrl', 'N'], label: 'Ajouter un projet' },
   { keys: ['Ctrl', 'B'], label: 'Réduire ou agrandir le menu' },
   { keys: ['?'], label: 'Afficher cette aide' },
@@ -15,8 +15,8 @@ const GLOSSARY = [
   ['Projet', 'Un dossier de votre ordinateur : un site, une application, un outil.'],
   ['Serveur', 'Un programme lancé par une commande (par exemple npm run dev) qui fait tourner votre projet.'],
   ['Port', 'Le numéro de « porte » par lequel un serveur répond, par exemple 3000. Deux serveurs ne peuvent pas utiliser la même.'],
-  ['Journal', 'Les messages qu’un serveur écrit en direct : utile pour comprendre une erreur.'],
-  ['Aperçu', 'Une fenêtre pour voir votre projet comme sur un ordinateur, une tablette ou un téléphone.'],
+  ['Logs', 'Les messages qu’un serveur écrit en direct : utile pour comprendre une erreur.'],
+  ['Aperçu web', 'Une fenêtre pour voir votre projet comme sur un ordinateur, une tablette ou un téléphone.'],
 ];
 
 export default function HelpContent() {

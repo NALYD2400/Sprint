@@ -37,10 +37,10 @@ function MenuItem({ icon: Icon, danger, onClick, children }) {
       onClick={onClick}
       role="menuitem"
       className={`w-full flex items-center gap-2.5 px-2.5 min-h-8 py-1.5 rounded-md transition-colors cursor-pointer text-left ${
-        danger ? 'text-rose-400 hover:bg-rose-500/10' : 'text-zinc-300 hover:text-white hover:bg-white/[0.06]'
+        danger ? 'text-rose-400 hover:bg-rose-500/10' : 'text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-3)]'
       }`}
     >
-      <Icon className="w-3.5 h-3.5 opacity-70" />
+      <Icon className="w-3.5 h-3.5 opacity-80 shrink-0" />
       <span>{children}</span>
     </button>
   );
@@ -52,7 +52,7 @@ function IconBtn({ title, onClick, children }) {
       onClick={onClick}
       title={title}
       aria-label={title}
-      className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+      className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-3)] transition-colors cursor-pointer"
     >
       {children}
     </button>
@@ -405,8 +405,8 @@ export default function ProjectsView({
                       className={`w-3.5 h-3.5 text-zinc-600 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                     />
                     <ProjectAvatar project={project} image={projectIcons[project.id]} />
-                    <span className="text-sm font-medium text-white truncate">{project.name}</span>
-                    {meta && <span className="project-meta text-xs text-zinc-600 truncate" title={meta}>{meta}</span>}
+                    <span className="text-sm font-medium text-[var(--text-hi)] truncate">{project.name}</span>
+                    {meta && <span className="project-meta text-xs text-[var(--text-lo)] truncate" title={meta}>{meta}</span>}
                     <span className="project-server-count">{servers.length} serveur{servers.length > 1 ? 's' : ''}</span>
                     {isCollapsed && activeServersCount > 0 && (
                       <span className="text-xs text-emerald-400">{activeServersCount} en cours</span>
@@ -429,17 +429,19 @@ export default function ProjectsView({
                         <button
                           disabled={servers.some((server) => getOperation(server.id))}
                           onClick={() => handleStopProjectServers(project)}
-                          className="h-7 px-2 rounded-md text-xs text-zinc-300 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          className="h-7 px-2.5 mr-1 inline-flex items-center gap-1.5 rounded-md text-xs text-[var(--text-mid)] hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         >
-                          Tout arrêter
+                          <Square size={11} aria-hidden="true" />
+                          <span>Tout arrêter</span>
                         </button>
                       ) : (
                         <button
                           disabled={servers.some((server) => getOperation(server.id))}
                           onClick={() => handleStartProjectServers(project)}
-                          className="h-7 px-2 rounded-md text-xs text-zinc-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                          className="h-7 px-2.5 mr-1 inline-flex items-center gap-1.5 rounded-md text-xs text-[var(--text-mid)] hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
                         >
-                          Tout lancer
+                          <Play size={11} aria-hidden="true" />
+                          <span>Tout lancer</span>
                         </button>
                       ))}
 
@@ -455,8 +457,8 @@ export default function ProjectsView({
                         }}
                         className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
                           isProjectMenuOpen
-                            ? 'bg-white/[0.08] text-white'
-                            : 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
+                            ? 'bg-[var(--surface-3)] text-[var(--text-hi)]'
+                            : 'text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-3)]'
                         }`}
                         title="Options du projet"
                         aria-label="Options du projet"
@@ -646,8 +648,8 @@ export default function ProjectsView({
                                 }}
                                 className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
                                   isServerMenuOpen
-                                    ? 'bg-white/[0.08] text-white'
-                                    : 'text-zinc-500 hover:text-white hover:bg-white/[0.06]'
+                                    ? 'bg-[var(--surface-3)] text-[var(--text-hi)]'
+                                    : 'text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-3)]'
                                 }`}
                                 title="Options du serveur"
                                 aria-label="Options du serveur"

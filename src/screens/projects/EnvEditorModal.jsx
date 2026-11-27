@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import SprintNavIcon from '../../components/layout/SprintNavIcon';
 import { triggerToast } from '../../lib/toastBus';
 
 export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
@@ -211,14 +212,14 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--line)] pb-3.5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-                <FileText className="w-5 h-5" />
-              </div>
+              <span className="page-header-icon" aria-hidden="true">
+                <SprintNavIcon name="projects" active />
+              </span>
               <div>
-                <h2 className="text-base font-semibold text-white tracking-tight">
+                <h2 className="text-base font-semibold text-[var(--text-hi)] tracking-tight">
                   Éditeur d’environnement (.env)
                 </h2>
-                <p className="text-xs text-zinc-400 font-mono truncate max-w-lg mt-0.5">
+                <p className="text-xs text-[var(--text-mid)] font-mono truncate max-w-lg mt-0.5">
                   {projectRoot}\{selectedFile}
                 </p>
               </div>
@@ -227,7 +228,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
               type="button"
               onClick={requestClose}
               aria-label="Fermer"
-              className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -246,7 +247,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                     className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors duration-150 cursor-pointer border flex items-center gap-1.5 ${
                       isActive
                         ? 'theme-accent-btn border-transparent'
-                        : 'border-[var(--line)] bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                        : 'border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-3)]'
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5" />
@@ -267,7 +268,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                     }}
                     placeholder=".env.local"
                     autoFocus
-                    className="px-2.5 py-1 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-xs font-mono text-white focus:outline-none w-28"
+                    className="px-2.5 py-1 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-xs font-mono text-[var(--text-hi)] focus:outline-none w-28"
                   />
                   <button
                     type="button"
@@ -280,7 +281,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                   <button
                     type="button"
                     onClick={() => setIsCreatingFile(false)}
-                    className="p-1.5 rounded-lg bg-white/10 text-zinc-400 hover:text-white text-xs"
+                    className="p-1.5 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-mid)] hover:text-[var(--text-hi)] text-xs"
                     title="Annuler"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -290,7 +291,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                 <button
                   type="button"
                   onClick={() => setIsCreatingFile(true)}
-                  className="px-2.5 py-1.5 rounded-lg border border-dashed border-[var(--line-strong)] text-zinc-400 hover:text-white hover:bg-white/[0.04] text-xs font-medium transition-colors duration-150 cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1.5 rounded-lg border border-dashed border-[var(--line-strong)] text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-3)] text-xs font-medium transition-colors duration-150 cursor-pointer flex items-center gap-1"
                 >
                   <FilePlus className="w-3.5 h-3.5" />
                   <span>Nouveau fichier</span>
@@ -328,7 +329,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                 type="button"
                 onClick={() => setShowSecrets(!showSecrets)}
                 aria-pressed={showSecrets}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 transition-colors cursor-pointer border border-[var(--line)]"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors cursor-pointer border border-[var(--line)]"
               >
                 {showSecrets ? <EyeOff className="w-3.5 h-3.5 text-amber-400" /> : <Eye className="w-3.5 h-3.5" />}
                 <span>{showSecrets ? 'Masquer les valeurs' : 'Afficher les secrets en clair'}</span>
@@ -348,13 +349,13 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
 
             {viewMode === 'table' && (
               <div className="relative">
-                <Search className="w-3 h-3 text-zinc-400 absolute left-2.5 top-2.5" />
+                <Search className="w-3 h-3 text-[var(--text-mid)] absolute left-2.5 top-2.5" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filtrer les clés..."
-                  className="pl-8 pr-3 py-1.5 rounded-lg bg-white/[0.04] border border-[var(--line)] text-xs text-white placeholder-zinc-600 focus:outline-none theme-accent-border font-mono w-44"
+                  className="pl-8 pr-3 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line-strong)] text-xs text-[var(--text-hi)] placeholder-[var(--text-lo)] focus:outline-none theme-accent-border font-mono w-44"
                 />
               </div>
             )}
@@ -448,7 +449,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                                 type={showSecrets ? 'text' : 'password'}
                                 value={entry.value}
                                 onChange={(e) => handleUpdateKvValue(entry.index, entry.key, e.target.value)}
-                                className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--surface-1)] border border-[var(--line)] text-xs font-mono text-zinc-200 focus:outline-none theme-accent-border"
+                                className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] text-xs font-mono text-[var(--text-hi)] focus:outline-none theme-accent-border"
                                 placeholder="valeur..."
                               />
                             </div>
@@ -466,7 +467,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                                   duration: 2000,
                                 });
                               }}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg hover:bg-[var(--surface-3)] text-[var(--text-mid)] hover:text-[var(--text-hi)] transition-colors cursor-pointer"
                               title="Copier la valeur"
                             >
                               <Copy className="w-3.5 h-3.5" />
@@ -474,7 +475,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
                             <button
                               type="button"
                               onClick={() => handleDeleteEntry(entry.index)}
-                              className="p-1.5 rounded-lg hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg hover:bg-red-500/20 text-[var(--text-mid)] hover:text-red-400 transition-colors cursor-pointer"
                               title="Supprimer cette variable"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -493,7 +494,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
           {error && (
             <div
               role="alert"
-              className="flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3.5 py-2.5"
+              className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl px-3.5 py-2.5"
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span className="break-words">{error}</span>
@@ -505,7 +506,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
             <button
               type="button"
               onClick={requestClose}
-              className="px-4 py-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
+              className="btn cursor-pointer"
             >
               Fermer
             </button>
@@ -513,7 +514,7 @@ export default function EnvEditorModal({ isOpen, onClose, projectRoot }) {
               type="button"
               onClick={handleSave}
               disabled={!isDirty || loading}
-              className="px-5 py-2.5 rounded-lg theme-accent-btn font-semibold text-xs flex items-center gap-2 disabled:opacity-40 transition-[filter,transform] duration-150 cursor-pointer"
+              className="px-5 py-2.5 rounded-lg theme-accent-btn font-semibold text-xs flex items-center gap-2 transition-[filter,transform] duration-150 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Enregistrer {selectedFile}</span>

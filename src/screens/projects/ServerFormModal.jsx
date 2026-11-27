@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, ChevronRight } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import SprintNavIcon from '../../components/layout/SprintNavIcon';
 import { isValidProjectPort } from '../../lib/projectChanges';
 
 const SUGGESTED_SCRIPTS = [
@@ -28,10 +29,18 @@ export default function ServerFormModal({
   saveProjectChange,
 }) {
   const isEdit = mode === 'edit';
-  const [name, setName] = useState('');
-  const [command, setCommand] = useState('npm run dev');
-  const [port, setPort] = useState('3000');
-  const [ramLimit, setRamLimit] = useState('500');
+  const [name, setName] = useState(() =>
+    isEdit && server ? server.name || 'dev' : `Serveur ${((project && project.servers) || []).length + 1}`,
+  );
+  const [command, setCommand] = useState(() =>
+    isEdit && server ? server.command || '' : 'npm run dev',
+  );
+  const [port, setPort] = useState(() =>
+    isEdit && server ? (server.port ? String(server.port) : '') : '3000',
+  );
+  const [ramLimit, setRamLimit] = useState(() =>
+    isEdit && server ? (server.ramLimit ? String(server.ramLimit) : '') : '500',
+  );
   const [error, setError] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,24 +118,29 @@ export default function ServerFormModal({
     onClose();
   };
 
-  const field = 'w-full h-9 px-3 rounded-md bg-white/[0.04] border border-transparent hover:bg-white/[0.06] text-[13px] text-zinc-100 placeholder-zinc-600';
-  const label = 'block text-xs text-zinc-400 mb-1.5';
+  const field = 'w-full h-9 px-3 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] hover:border-[var(--line-strong)] text-[13px] text-[var(--text-hi)] placeholder-[var(--text-lo)] transition-colors';
+  const label = 'block text-xs text-[var(--text-mid)] mb-1.5';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} dismissible={!saving} maxWidth="max-w-md">
       <div className="flex items-start justify-between px-6 pt-6">
-        <div>
-          <h3 className="text-base font-semibold text-white tracking-tight">
-            {isEdit ? 'Modifier le serveur' : 'Nouveau serveur'}
-          </h3>
-          <p className="text-xs text-zinc-500 mt-1">{project.name}</p>
+        <div className="flex items-center gap-3">
+          <span className="page-header-icon" aria-hidden="true">
+            <SprintNavIcon name="serversActive" active />
+          </span>
+          <div>
+            <h3 className="text-base font-semibold text-[var(--text-hi)] tracking-tight">
+              {isEdit ? 'Modifier le serveur' : 'Nouveau serveur'}
+            </h3>
+            <p className="text-xs text-[var(--text-mid)] mt-0.5">{project.name}</p>
+          </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-            disabled={saving}
+          disabled={saving}
           aria-label="Fermer"
-          className="w-7 h-7 -mr-1.5 flex items-center justify-center rounded-md text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+          className="w-7 h-7 -mr-1.5 flex items-center justify-center rounded-md text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-3)] transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
@@ -152,10 +166,10 @@ export default function ServerFormModal({
                   key={scriptCmd}
                   type="button"
                   onClick={() => setCommand(scriptCmd)}
-                  className={`h-6 px-2 rounded-md text-[12px] font-mono transition-colors cursor-pointer ${
+                  className={`h-6 px-2 rounded-md text-[12px] font-mono border transition-colors cursor-pointer ${
                     isSelected
-                      ? 'bg-white/[0.1] text-white'
-                      : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05]'
+                      ? 'bg-[var(--surface-3)] text-[var(--text-hi)] border-[var(--line-strong)]'
+                      : 'border-transparent text-[var(--text-mid)] hover:text-[var(--text-hi)] hover:bg-[var(--surface-2)]'
                   }`}
                 >
                   {scriptCmd}
@@ -233,7 +247,7 @@ export default function ServerFormModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="h-8 px-3 rounded-md text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer"
+            className="btn cursor-pointer"
           >
             Annuler
           </button>

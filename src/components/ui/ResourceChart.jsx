@@ -25,7 +25,7 @@ function ChartPlot({ title, history, field, unit, chartStyle, period, expanded =
     return () => observer.disconnect();
   }, []);
 
-  const left = 44;
+  const left = unit === '%' ? 46 : 60;
   const right = size.width - 12;
   const top = 12;
   const bottom = size.height - 28;
@@ -154,7 +154,7 @@ function ChartPlot({ title, history, field, unit, chartStyle, period, expanded =
               stroke="var(--line)"
             />
             <text x={left - 8} y={y(max * ratio) + 4} textAnchor="end" className="chart-axis">
-              {Math.round(max * ratio)}
+              {Math.round(max * ratio)}{unit === '%' ? '%' : ` ${unit}`}
             </text>
           </g>
         ))}

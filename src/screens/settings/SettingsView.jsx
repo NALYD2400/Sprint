@@ -262,7 +262,7 @@ export default function SettingsView({
     saveUpdatedSettings({ ...settings, [key]: value });
   };
   const categories = [
-    ['appearance', 'Apparence', 'Taille du texte et animations.', Palette],
+    ['appearance', 'Apparence', 'Thème, taille du texte et animations.', Palette],
     ['dashboard', 'Tableau de bord', 'Mesures et blocs affichés.', Activity],
     ['supervision', 'Serveurs & logs', 'Relance, journal et serveurs arrêtés.', SlidersHorizontal],
     ['system', 'Système', 'Raccourci, démarrage et notifications.', Monitor],

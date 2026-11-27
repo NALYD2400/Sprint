@@ -9,6 +9,7 @@ import FloatingMenu from '../../components/ui/FloatingMenu';
 import ProjectAvatar from '../../components/ui/ProjectAvatar';
 import { portAccess, portCategory, projectWebUrl } from './portPresentation';
 import { markManualStop, unmarkManualStop } from '../../lib/serverLifecycle';
+import { isTauriEnv } from '../../lib/tauri';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -84,6 +85,13 @@ export default function PortsView({ projects = [], projectIcons = {} }) {
 
   const fetchPorts = useCallback(async () => {
     if (fetchingRef.current) return;
+    if (!isTauriEnv()) {
+      setPorts([]);
+      setFetchError('La lecture des ports système nécessite l’application de bureau Sprint.');
+      setLoading(false);
+      manualRefreshRef.current = false;
+      return;
+    }
     fetchingRef.current = true;
     setLoading(true);
     try {
@@ -264,7 +272,7 @@ export default function PortsView({ projects = [], projectIcons = {} }) {
       </div>
       </div>
       <div className="ports-summary">
-        <span>{filteredPorts.length} {filteredPorts.length === 1 ? 'port affiché' : 'ports affichés'}
+        <span>{filteredPorts.length} {filteredPorts.length <= 1 ? 'port affiché' : 'ports affichés'}
           {filteredPorts.length !== ports.length ? ' sur ' + ports.length : ''}</span>
       </div>
       {fetchError && (
@@ -364,9 +372,9 @@ export default function PortsView({ projects = [], projectIcons = {} }) {
           </table>
         </div>
       )}
-      <p className="ports-footer" role="status">{fetchError ? 'Actualisation interrompue · Derniers résultats conservés'
+      <p className="ports-footer" role="status">{fetchError ? (isTauriEnv() ? 'Actualisation interrompue · Derniers résultats conservés' : 'Aperçu web · Scan système indisponible')
         : updatedAt ? 'Actualisation automatique · ' + updatedAt.toLocaleTimeString('fr-FR') : 'Recherche des ports…'}
-        <span>Toutes les 3 secondes</span></p>
+        <span>{fetchError ? 'Actualisation en pause' : 'Toutes les 3 secondes'}</span></p>
       <ConfirmDialog
         open={!!confirmKill}
         title={

@@ -418,7 +418,8 @@ export default function BrowserView({
         </>
       ) : (
         <button type="button" className="btn" onClick={() => onSelectTab?.('projects')}>
-          Aller aux projets
+          <span>Aller aux projets</span>
+          <ArrowRight size={14} />
         </button>
       )}
     </EmptyState>
@@ -607,6 +608,7 @@ export default function BrowserView({
                   className="icon-button"
                   aria-label="Aller"
                   title="Aller à cette adresse"
+                  disabled={!address.trim()}
                 >
                   <ArrowRight size={14} />
                 </button>

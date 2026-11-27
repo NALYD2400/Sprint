@@ -18,6 +18,7 @@ export default function AppModals({ shell }) {
     setIsPaletteOpen,
     projects,
     handleOpenTerminal,
+    handleOpenBrowser,
     setActiveTab,
     envModalRoot,
     setEnvModalRoot,
@@ -44,6 +45,7 @@ export default function AppModals({ shell }) {
         onClose={() => setIsPaletteOpen(false)}
         projects={projects}
         onOpenTerminal={handleOpenTerminal}
+        onOpenBrowser={handleOpenBrowser}
         onSelectTab={setActiveTab}
         onAddProject={() => setIsAddModalOpen(true)}
       />

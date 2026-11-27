@@ -34,9 +34,11 @@ export default function StorageSettings({ projects, configDirPath, handleOpenCon
         </label>
       </SettingRow>
       <p className="settings-note">
-        {projects.length} projets enregistrés ·{' '}
-        {projects.reduce((count, project) => count + (project.servers || []).length, 0)}{' '}
-        serveurs configurés
+        {projects.length} {projects.length === 1 ? 'projet enregistré' : 'projets enregistrés'} ·{' '}
+        {(() => {
+          const totalServers = projects.reduce((count, project) => count + (project.servers || []).length, 0);
+          return `${totalServers} ${totalServers === 1 ? 'serveur configuré' : 'serveurs configurés'}`;
+        })()}
       </p>
     </>
   );

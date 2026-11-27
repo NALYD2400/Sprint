@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useId } from 'react';
 import {
   Search,
-  FolderCode,
   Code2,
   ExternalLink,
-  LayoutDashboard,
-  Network,
-  Terminal,
-  Globe,
-  Settings,
   Plus,
   Folder,
   CornerDownLeft,
@@ -19,6 +13,7 @@ import {
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import Modal from '../ui/Modal';
+import SprintNavIcon from '../layout/SprintNavIcon';
 import { triggerToast } from '../../lib/toastBus';
 import { performServerAction } from '../../lib/serverActions';
 import useServerOperations from '../../hooks/useServerOperations';
@@ -41,6 +36,7 @@ export default function CommandPaletteModal({
   onClose,
   projects = [],
   onOpenTerminal,
+  onOpenBrowser,
   onSelectTab,
   onAddProject,
 }) {
@@ -60,20 +56,20 @@ export default function CommandPaletteModal({
 
   const items = useMemo(() => {
     const pages = [
-      ['dashboard', 'Tableau de bord', 'Statistiques et serveurs', LayoutDashboard],
-      ['projects', 'Projets', 'Gérer les projets et leurs commandes', FolderCode],
-      ['browser', 'Aperçu web', 'Tester un site sur ordinateur, tablette ou mobile', Globe],
-      ['ports', 'Ports', 'Voir les connexions et les processus', Network],
-      ['terminal', 'Logs', 'Consulter les sorties des serveurs', Terminal],
-      ['settings', 'Paramètres', 'Apparence, tableau de bord et préférences', Settings],
+      ['dashboard', 'Tableau de bord', 'Statistiques et serveurs'],
+      ['projects', 'Projets', 'Gérer les projets et leurs commandes'],
+      ['browser', 'Aperçu web', 'Tester un site sur ordinateur, tablette ou mobile'],
+      ['ports', 'Ports', 'Voir les connexions et les processus'],
+      ['terminal', 'Logs', 'Consulter les sorties des serveurs'],
+      ['settings', 'Paramètres', 'Apparence, tableau de bord et préférences'],
     ];
-    const result = pages.map(([id, title, subtitle, icon]) => ({
+    const result = pages.map(([id, title, subtitle]) => ({
       id: 'nav_' + id,
       group: 'pages',
       groupLabel: 'Pages',
       title,
       subtitle,
-      icon,
+      sprintIcon: id,
       keywords: 'navigation',
       action: () => onSelectTab?.(id),
     }));
@@ -114,19 +110,30 @@ export default function CommandPaletteModal({
           title: 'Logs · ' + server.name,
           subtitle: server.port > 0 ? 'Port :' + server.port : 'Sorties du serveur',
           keywords: 'console terminal journal',
-          icon: Terminal,
+          sprintIcon: 'terminal',
           action: () => onOpenTerminal?.(server.id, server.name),
         });
-        if (server.port > 0)
+        if (server.url || server.port > 0) {
+          const targetUrl = server.url || 'http://localhost:' + server.port;
+          result.push({
+            ...base,
+            id: 'preview_' + server.id,
+            title: 'Aperçu web · ' + server.name,
+            subtitle: targetUrl,
+            keywords: 'apercu preview web device responsive',
+            sprintIcon: 'browser',
+            action: () => onOpenBrowser?.(server.id, targetUrl),
+          });
           result.push({
             ...base,
             id: 'web_' + server.id,
             title: 'Ouvrir dans le navigateur',
-            subtitle: server.name + ' · localhost:' + server.port,
+            subtitle: server.name + ' · ' + targetUrl,
             keywords: 'web site apercu navigateur',
             icon: ExternalLink,
-            action: () => invoke('open_browser', { url: 'http://localhost:' + server.port }),
+            action: () => invoke('open_browser', { url: targetUrl }),
           });
+        }
         const running = server.state === 'running';
         const actions = running ? ['stop', 'restart'] : ['start'];
         actions.forEach((action) => {
@@ -147,7 +154,7 @@ export default function CommandPaletteModal({
       });
     });
     return result;
-  }, [projects, onSelectTab, onAddProject, onOpenTerminal]);
+  }, [projects, onSelectTab, onAddProject, onOpenTerminal, onOpenBrowser]);
 
   const filtered = useMemo(() => {
     const tokens = normalize(query).trim().split(/\s+/).filter(Boolean);
@@ -282,7 +289,15 @@ export default function CommandPaletteModal({
                       onClick={() => execute(item)}
                       className="palette-option"
                     >
-                      <Icon size={17} className={`palette-option-icon${busy ? ' animate-spin' : ''}`} aria-hidden="true" />
+                      {busy ? (
+                        <Loader2 size={17} className="palette-option-icon animate-spin" aria-hidden="true" />
+                      ) : item.sprintIcon ? (
+                        <span className="palette-option-icon palette-option-sprint" aria-hidden="true">
+                          <SprintNavIcon name={item.sprintIcon} active={active} />
+                        </span>
+                      ) : (
+                        <Icon size={17} className="palette-option-icon" aria-hidden="true" />
+                      )}
                       <span className="palette-option-copy">
                         <span className="palette-option-title">{item.title}</span>
                         <span className="palette-option-detail" title={detail}>
